@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central Library – My Library</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #c9a84c;
+            --dark: #1a1208;
+            --cream: #fdf6e3;
+            --brown: #5c3d1e;
+            --panel: #2a1f0f;
+            --border: rgba(201,168,76,0.25);
+            --success: #68d391;
+            --warning: #f6ad55;
+            --danger: #fc8181;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #120d05;
+            font-family: 'Lato', sans-serif;
+            color: var(--cream);
+            min-height: 100vh;
+        }
+
+        nav {
+            background: rgba(26,18,8,0.97);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 36px;
+            height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+
+        .nav-brand { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); letter-spacing: 1px; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-links a {
+            text-decoration: none; font-size: 12px; letter-spacing: 2px;
+            text-transform: uppercase; color: rgba(253,246,227,0.6);
+            transition: color 0.2s; font-weight: 600; cursor: pointer;
+        }
+        .nav-links a:hover { color: var(--gold); }
+        .nav-user { display: flex; align-items: center; gap: 10px; }
+        .avatar {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--gold); display: flex; align-items: center;
+            justify-content: center; font-weight: 700; font-size: 15px; color: var(--dark);
+        }
+        .role-pill {
+            font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase;
+            background: rgba(104,211,145,0.15); color: var(--success);
+            border: 1px solid rgba(104,211,145,0.3); padding: 2px 8px; border-radius: 20px;
+        }
+        .nav-user span { font-size: 13px; color: rgba(253,246,227,0.7); }
+        .logout-btn {
+            background: none; border: 1px solid rgba(200,60,60,0.4); color: #fc8181;
+            font-size: 11px; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px;
+            border-radius: 3px; cursor: pointer; font-family: 'Lato', sans-serif; transition: background 0.2s;
+        }
+        .logout-btn:hover { background: rgba(200,60,60,0.15); }
+
+        .hero {
+            padding: 48px 36px 32px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(to right, rgba(42,31,15,0.9), transparent);
+            animation: fadeUp 0.6s ease both;
+            display: flex; align-items: flex-end; justify-content: space-between;
+            flex-wrap: wrap; gap: 20px;
+        }
+        .hero-sub { font-size: 11px; letter-spacing: 4px; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
+        .hero h1 { font-family: 'Playfair Display', serif; font-size: clamp(22px,3.5vw,38px); color: var(--cream); margin-bottom: 4px; }
+        .hero h1 span { color: var(--gold); }
+        .hero p { font-size: 13px; color: rgba(253,246,227,0.45); font-weight: 300; }
+
+        .membership-card {
+            background: linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05));
+            border: 1px solid var(--border); border-radius: 6px; padding: 18px 22px;
+            min-width: 220px; max-width: 280px;
+        }
+        .mc-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: rgba(253,246,227,0.35); margin-bottom: 8px; }
+        .mc-id { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--gold); margin-bottom: 4px; letter-spacing: 1px; }
+        .mc-type { font-size: 11px; color: rgba(253,246,227,0.5); margin-bottom: 12px; }
+        .mc-expiry { font-size: 11px; color: rgba(253,246,227,0.4); }
+        .mc-expiry strong { color: rgba(253,246,227,0.7); }
+
+        .stats {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+            gap: 16px; padding: 28px 36px; animation: fadeUp 0.6s 0.1s ease both;
+        }
+        .stat-card {
+            background: var(--panel); border: 1px solid var(--border);
+            border-radius: 4px; padding: 20px; position: relative; overflow: hidden;
+        }
+        .stat-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: var(--gold); opacity: 0.5;
+        }
+        .stat-icon { font-size: 20px; margin-bottom: 8px; }
+        .stat-value { font-family: 'Playfair Display', serif; font-size: 30px; color: var(--gold); line-height: 1; margin-bottom: 4px; }
+        .stat-label { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: rgba(253,246,227,0.4); }
+
+        .main-grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 20px; padding: 0 36px 36px; animation: fadeUp 0.6s 0.15s ease both;
+        }
+
+        @media (max-width: 700px) {
+            .main-grid { grid-template-columns: 1fr; }
+            nav, .stats, .main-grid, .hero { padding-left: 16px; padding-right: 16px; }
+            .nav-links { display: none; }
+            .membership-card { min-width: unset; max-width: 100%; width: 100%; }
+            .hero { flex-direction: column; align-items: flex-start; }
+        }
+
+        .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+        .panel-full { grid-column: 1 / -1; }
+
+        .panel-header {
+            padding: 18px 22px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .panel-title { font-family: 'Playfair Display', serif; font-size: 16px; color: var(--cream); }
+        .panel-badge {
+            font-size: 10px; letter-spacing: 2px; background: rgba(201,168,76,0.15);
+            color: var(--gold); border: 1px solid var(--border); padding: 3px 9px;
+            border-radius: 20px; text-transform: uppercase;
+        }
+
+        .book-list { list-style: none; }
+        .book-list.scroll { max-height: 380px; overflow-y: auto; }
+        .book-list::-webkit-scrollbar { width: 4px; }
+        .book-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+        .book-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 22px; border-bottom: 1px solid rgba(201,168,76,0.1);
+            transition: background 0.2s;
+        }
+        .book-item:last-child { border-bottom: none; }
+        .book-item:hover { background: rgba(201,168,76,0.04); }
+        .book-spine { width: 8px; height: 46px; border-radius: 2px; flex-shrink: 0; }
+        .book-info { flex: 1; min-width: 0; }
+        .book-title {
+            font-family: 'Playfair Display', serif; font-size: 14px; color: var(--cream);
+            margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .book-meta { font-size: 11px; color: rgba(253,246,227,0.4); }
+
+        .item-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+        .status-pill {
+            font-size: 10px; letter-spacing: 1px; padding: 3px 9px; border-radius: 20px;
+            text-transform: uppercase; font-weight: 600; white-space: nowrap;
+        }
+        .pill-available { background: rgba(72,187,120,0.15); color: #68d391; border: 1px solid rgba(72,187,120,0.3); }
+        .pill-issued    { background: rgba(237,137,54,0.15);  color: #f6ad55; border: 1px solid rgba(237,137,54,0.3); }
+        .pill-overdue   { background: rgba(252,129,129,0.15); color: #fc8181; border: 1px solid rgba(252,129,129,0.3); }
+        .pill-pending   { background: rgba(118,228,247,0.12); color: #76e4f7; border: 1px solid rgba(118,228,247,0.3); }
+        .pill-approved  { background: rgba(72,187,120,0.15);  color: #68d391; border: 1px solid rgba(72,187,120,0.3); }
+        .pill-rejected  { background: rgba(252,129,129,0.15); color: #fc8181; border: 1px solid rgba(252,129,129,0.3); }
+
+        /* Borrow / Return buttons */
+        .borrow-btn, .return-btn {
+            font-family: 'Lato', sans-serif; font-size: 10px; letter-spacing: 1.5px;
+            text-transform: uppercase; font-weight: 700; padding: 6px 12px;
+            border-radius: 3px; cursor: pointer; border: none; transition: all 0.2s;
+            white-space: nowrap; flex-shrink: 0;
+        }
+        .borrow-btn { background: var(--gold); color: var(--dark); }
+        .borrow-btn:hover { background: #e0bc60; transform: translateY(-1px); }
+        .borrow-btn:disabled { background: rgba(201,168,76,0.25); color: rgba(253,246,227,0.3); cursor: not-allowed; transform: none; }
+        .borrow-btn.requested { background: rgba(118,228,247,0.15); color: #76e4f7; border: 1px solid rgba(118,228,247,0.3); cursor: not-allowed; }
+
+        .return-btn { background: transparent; color: #76e4f7; border: 1px solid rgba(118,228,247,0.35); }
+        .return-btn:hover { background: rgba(118,228,247,0.1); transform: translateY(-1px); }
+        .return-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .search-bar { padding: 14px 22px; border-bottom: 1px solid var(--border); }
+        .search-input {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+            border-radius: 3px; padding: 9px 14px; font-size: 13px; color: var(--cream);
+            font-family: 'Lato', sans-serif; outline: none; transition: border-color 0.2s;
+        }
+        .search-input::placeholder { color: rgba(253,246,227,0.2); }
+        .search-input:focus { border-color: var(--gold); }
+
+        .no-data { padding: 32px; text-align: center; color: rgba(253,246,227,0.3); font-size: 13px; }
+        .loading  { padding: 24px; text-align: center; color: var(--gold); font-size: 13px; }
+
+        .overdue-banner {
+            background: rgba(252,129,129,0.08); border: 1px solid rgba(252,129,129,0.25);
+            border-radius: 4px; padding: 14px 22px; margin: 0 36px 20px;
+            font-size: 13px; color: #fc8181; display: none; align-items: center; gap: 10px;
+        }
+        .overdue-banner.show { display: flex; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(4px);
+            z-index: 200; align-items: center; justify-content: center; padding: 16px;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #1e1508; border: 1px solid var(--border);
+            border-radius: 6px; width: 100%; max-width: 460px;
+            animation: modalIn 0.3s ease; overflow: hidden;
+        }
+        @keyframes modalIn {
+            from { opacity: 0; transform: translateY(24px) scale(0.97); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .modal-header {
+            padding: 20px 24px; border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .modal-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--cream); }
+        .modal-close {
+            background: none; border: none; color: rgba(253,246,227,0.4);
+            font-size: 22px; cursor: pointer; padding: 2px 6px; border-radius: 3px; transition: color 0.2s;
+        }
+        .modal-close:hover { color: var(--cream); }
+        .modal-body { padding: 24px; }
+        .modal-book-title { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--gold); margin-bottom: 6px; }
+        .modal-book-author { font-size: 13px; color: rgba(253,246,227,0.5); margin-bottom: 18px; }
+        .modal-note { font-size: 13px; color: rgba(253,246,227,0.6); line-height: 1.6; }
+        .modal-footer {
+            padding: 16px 24px; border-top: 1px solid var(--border);
+            display: flex; gap: 10px; justify-content: flex-end;
+        }
+        .btn {
+            font-family: 'Lato', sans-serif; font-size: 12px; letter-spacing: 1.5px;
+            text-transform: uppercase; font-weight: 700; padding: 10px 22px;
+            border-radius: 3px; cursor: pointer; border: none; transition: all 0.2s;
+        }
+        .btn-primary { background: var(--gold); color: var(--dark); }
+        .btn-primary:hover { background: #e0bc60; }
+        .btn-secondary { background: transparent; color: rgba(253,246,227,0.6); border: 1px solid var(--border); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.05); color: var(--cream); }
+
+        .field-label {
+            display: block; font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+            color: rgba(253,246,227,0.4); margin-bottom: 8px;
+        }
+        .date-input {
+            width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+            border-radius: 3px; padding: 10px 14px; font-size: 13px; color: var(--cream);
+            font-family: 'Lato', sans-serif; outline: none; transition: border-color 0.2s;
+            margin-bottom: 6px; color-scheme: dark;
+        }
+        .date-input:focus { border-color: var(--gold); }
+        .field-hint { font-size: 11px; color: rgba(253,246,227,0.35); margin-bottom: 18px; }
+
+        .fine-box {
+            background: rgba(252,129,129,0.08); border: 1px solid rgba(252,129,129,0.25);
+            border-radius: 4px; padding: 12px 16px; font-size: 13px; color: #fc8181;
+            margin-top: 14px; display: none;
+        }
+        .fine-box.show { display: block; }
+        .ontime-box {
+            background: rgba(104,211,145,0.08); border: 1px solid rgba(104,211,145,0.25);
+            border-radius: 4px; padding: 12px 16px; font-size: 13px; color: #68d391;
+            margin-top: 14px; display: none;
+        }
+        .ontime-box.show { display: block; }
+
+        /* Toast */
+        .toast-container { position: fixed; bottom: 28px; right: 28px; z-index: 999; display: flex; flex-direction: column; gap: 10px; }
+        .toast {
+            background: #2a1f0f; border: 1px solid var(--border); border-left: 4px solid var(--gold);
+            border-radius: 4px; padding: 14px 18px; font-size: 13px; color: var(--cream);
+            min-width: 260px; max-width: 340px;
+            animation: toastIn 0.3s ease; display: flex; align-items: center; gap: 10px;
+        }
+        .toast.success { border-left-color: var(--success); }
+        .toast.error   { border-left-color: var(--danger); }
+        @keyframes toastIn  { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateX(20px); } }
+
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(14px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Request history item */
+        .req-item {
+            display: flex; align-items: center; gap: 14px;
+            padding: 14px 22px; border-bottom: 1px solid rgba(201,168,76,0.1);
+        }
+        .req-item:last-child { border-bottom: none; }
+        .req-icon { font-size: 20px; flex-shrink: 0; }
+        .req-info { flex: 1; min-width: 0; }
+        .req-title { font-family: 'Playfair Display', serif; font-size: 13px; color: var(--cream); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .req-meta  { font-size: 11px; color: rgba(253,246,227,0.4); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-brand">Central Library</div>
+    <div class="nav-links">
+        <a onclick="document.getElementById('my-books-section').scrollIntoView({behavior:'smooth'})">My Books</a>
+        <a onclick="document.getElementById('requests-section').scrollIntoView({behavior:'smooth'})">My Requests</a>
+        <a onclick="document.getElementById('catalogue-section').scrollIntoView({behavior:'smooth'})">Catalogue</a>
+    </div>
+    <div class="nav-user">
+        <div class="avatar" id="avatarLetter">?</div>
+        <span id="navName">—</span>
+        <span class="role-pill" id="rolePill">Member</span>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+</nav>
+
+<div class="hero">
+    <div class="hero-left">
+        <p class="hero-sub">Member Dashboard</p>
+        <h1>Welcome, <span id="heroName">Reader</span></h1>
+        <p id="dateStr">—</p>
+    </div>
+    <div class="membership-card" id="membership-card" style="display:none;">
+        <div class="mc-label">Library Membership</div>
+        <div class="mc-id" id="mc-id">—</div>
+        <div class="mc-type" id="mc-type">—</div>
+        <div class="mc-expiry">Valid until: <strong id="mc-expiry">—</strong></div>
+    </div>
+</div>
+
+<div class="stats">
+    <div class="stat-card">
+        <div class="stat-icon">📖</div>
+        <div class="stat-value" id="stat-borrowed">0</div>
+        <div class="stat-label">Currently Borrowed</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <div class="stat-value" id="stat-pending">0</div>
+        <div class="stat-label">Pending Requests</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value" id="stat-catalogue">0</div>
+        <div class="stat-label">Total in Catalogue</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value" id="stat-avail">0</div>
+        <div class="stat-label">Available Now</div>
+    </div>
+</div>
+
+<div class="overdue-banner" id="overdue-banner">
+    <span>⚠️</span>
+    <span id="overdue-banner-msg">You have overdue books. Please return them to avoid fines (₹2/day).</span>
+</div>
+
+<div class="main-grid">
+
+    <!-- My Borrowed Books -->
+    <div class="panel panel-full" id="my-books-section">
+        <div class="panel-header">
+            <span class="panel-title">My Borrowed Books</span>
+            <span class="panel-badge" id="my-books-badge">0 Active</span>
+        </div>
+        <ul class="book-list scroll" id="my-issued-list">
+            <li class="loading">Loading your books…</li>
+        </ul>
+    </div>
+
+    <!-- My Borrow Requests -->
+    <div class="panel panel-full" id="requests-section">
+        <div class="panel-header">
+            <span class="panel-title">My Borrow Requests</span>
+            <span class="panel-badge" id="requests-badge">—</span>
+        </div>
+        <ul class="book-list scroll" id="requests-list">
+            <li class="loading">Loading requests…</li>
+        </ul>
+    </div>
+
+    <!-- Catalogue -->
+    <div class="panel panel-full" id="catalogue-section">
+        <div class="panel-header">
+            <span class="panel-title">Book Catalogue</span>
+            <span class="panel-badge" id="catalogue-badge">All Books</span>
+        </div>
+        <div class="search-bar">
+            <input type="text" class="search-input" id="catalogue-search"
+                   placeholder="🔍  Search by title or author…" oninput="filterCatalogue()">
+        </div>
+        <ul class="book-list scroll" id="catalogue-list">
+            <li class="loading">Loading catalogue…</li>
+        </ul>
+    </div>
+
+</div>
+
+<!-- CONFIRM BORROW MODAL -->
+<div class="modal-overlay" id="modal-borrow">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">Request to Borrow</span>
+            <button class="modal-close" onclick="closeModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-book-title" id="modal-btitle">—</div>
+            <div class="modal-book-author" id="modal-bauthor">—</div>
+
+            <label class="field-label" for="borrow-due-date">Choose your return date</label>
+            <input type="date" class="date-input" id="borrow-due-date" oninput="updateBorrowHint()">
+            <div class="field-hint" id="borrow-due-hint">Pick any date up to 30 days from today.</div>
+
+            <p class="modal-note">
+                Submitting a borrow request will notify the librarian, who will review and approve it.
+                Once approved, the book will be issued to you with your chosen return date
+                (the librarian may adjust it if needed).
+            </p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmBorrow()">Submit Request</button>
+        </div>
+    </div>
+</div>
+
+<!-- CONFIRM RETURN MODAL -->
+<div class="modal-overlay" id="modal-return">
+    <div class="modal">
+        <div class="modal-header">
+            <span class="modal-title">Return Book</span>
+            <button class="modal-close" onclick="closeReturnModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-book-title" id="return-btitle">—</div>
+            <div class="modal-book-author" id="return-bauthor">—</div>
+            <p class="modal-note">
+                Confirm that you're returning this book today, <strong id="return-today">—</strong>.
+                This updates your account and the librarian's records immediately.
+            </p>
+            <div class="fine-box" id="return-fine-box">
+                ⚠️ This book is overdue. A fine of <strong id="return-fine-amount">₹0</strong> will be recorded.
+            </div>
+            <div class="ontime-box" id="return-ontime-box">
+                ✅ This book is being returned on time — no fine.
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeReturnModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmReturn()">Confirm Return</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+const spineColors = ['#c9a84c','#68d391','#76e4f7','#f6ad55','#fc8181','#b794f4','#81e6d9','#faf089','#f6ad55','#feb2b2'];
+let allBooks = [];
+let myRequests = [];
+let selectedBookId = null;
+let selectedReturnId = null;
+
+const MIN_LOAN_DAYS = 1;
+const MAX_LOAN_DAYS = 30;
+const DEFAULT_LOAN_DAYS = 14;
+
+// ============================================
+// DATE HELPERS
+// ============================================
+function isoPlusDays(n) {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return d.toISOString().split('T')[0];
+}
+
+// ============================================
+// API HELPER
+// ============================================
+async function api(path, options = {}) {
+    const merged = { credentials: 'include', ...options };
+    if (merged.body && !merged.headers) merged.headers = { 'Content-Type': 'application/json' };
+    const res = await fetch('/api' + path, merged);
+    if (res.status === 401) { window.location.href = '/index.html'; return null; }
+    return res;
+}
+
+// ============================================
+// INIT
+// ============================================
+async function init() {
+    const res = await api('/me');
+    if (!res) return;
+    const user = await res.json();
+
+    if (user.role === 'admin') { window.location.href = '/dashboard.html'; return; }
+
+    document.getElementById('heroName').textContent     = user.name.split(' ')[0];
+    document.getElementById('navName').textContent      = user.name;
+    document.getElementById('avatarLetter').textContent = user.name.charAt(0).toUpperCase();
+    document.getElementById('rolePill').textContent     = user.role === 'teacher' ? 'Faculty' : 'Student';
+    document.getElementById('dateStr').textContent = new Date().toLocaleDateString('en-IN', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+    });
+
+    if (user.membership) {
+        const m = user.membership;
+        document.getElementById('mc-id').textContent     = m.id;
+        document.getElementById('mc-type').textContent   = m.type + ' Member';
+        document.getElementById('mc-expiry').textContent = m.membership_expiry
+            ? new Date(m.membership_expiry).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })
+            : 'N/A';
+        document.getElementById('membership-card').style.display = '';
+    }
+
+    await Promise.all([loadMyBooks(), loadMyRequests(), loadCatalogue(), loadStats()]);
+}
+
+// ============================================
+// MY ISSUED BOOKS
+// ============================================
+async function loadMyBooks() {
+    const res = await api('/my-issued');
+    if (!res) return;
+    const books = await res.json();
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const overdueList = books.filter(b => new Date(b.due_date) < today);
+
+    document.getElementById('my-books-badge').textContent = `${books.length} Active`;
+    document.getElementById('stat-borrowed').textContent  = books.length;
+
+    const banner = document.getElementById('overdue-banner');
+    if (overdueList.length > 0) {
+        document.getElementById('overdue-banner-msg').textContent =
+            `You have ${overdueList.length} overdue book${overdueList.length > 1 ? 's' : ''}. Please return ${overdueList.length > 1 ? 'them' : 'it'} to avoid a fine of ₹2/day.`;
+        banner.classList.add('show');
+    } else {
+        banner.classList.remove('show');
+    }
+
+    const list = document.getElementById('my-issued-list');
+    if (!books.length) {
+        list.innerHTML = '<li class="no-data">📖 You have no books borrowed at the moment.</li>';
+        return;
+    }
+
+    list.innerHTML = books.map((b, i) => {
+        const due     = new Date(b.due_date);
+        const overdue = due < today;
+        const daysLeft = Math.ceil((due - today) / 86400000);
+        const dueLabel = overdue
+            ? `Overdue by ${Math.abs(daysLeft)} day${Math.abs(daysLeft) !== 1 ? 's' : ''} · Fine: ₹${Math.abs(daysLeft) * 2}`
+            : `Due in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} (${b.due_date})`;
+        return `
+        <li class="book-item">
+            <div class="book-spine" style="background:${overdue ? '#fc8181' : spineColors[i % spineColors.length]};"></div>
+            <div class="book-info">
+                <div class="book-title">${esc(b.book_title)}</div>
+                <div class="book-meta">By ${esc(b.book_author || '—')} · Issued: ${b.issue_date}</div>
+                <div class="book-meta" style="margin-top:2px; color:${overdue ? '#fc8181' : '#f6ad55'};">${dueLabel}</div>
+            </div>
+            <div class="item-actions">
+                <span class="status-pill ${overdue ? 'pill-overdue' : 'pill-issued'}">${overdue ? 'Overdue' : 'Borrowed'}</span>
+                <button class="return-btn" onclick="openReturnModal(${b.id}, '${esc(b.book_title)}', '${esc(b.book_author || '')}', '${b.due_date}')">Return</button>
+            </div>
+        </li>`;
+    }).join('');
+}
+
+// ============================================
+// MY BORROW REQUESTS
+// ============================================
+async function loadMyRequests() {
+    const res = await api('/my-borrow-requests');
+    if (!res) return;
+    myRequests = await res.json();
+
+    const pending = myRequests.filter(r => r.status === 'pending').length;
+    document.getElementById('requests-badge').textContent = `${myRequests.length} Total`;
+    document.getElementById('stat-pending').textContent   = pending;
+
+    const list = document.getElementById('requests-list');
+    if (!myRequests.length) {
+        list.innerHTML = '<li class="no-data">No borrow requests yet. Browse the catalogue below to request a book.</li>';
+        return;
+    }
+
+    const icons = { pending: '⏳', approved: '✅', rejected: '❌' };
+    list.innerHTML = myRequests.map(r => {
+        const date = new Date(r.requested_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+        const noteText = r.note ? ` · Note: ${esc(r.note)}` : '';
+        const dueText = r.preferred_due_date
+            ? ` · Requested return: ${new Date(r.preferred_due_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`
+            : '';
+        return `
+        <li class="req-item">
+            <span class="req-icon">${icons[r.status] || '📋'}</span>
+            <div class="req-info">
+                <div class="req-title">${esc(r.book_title)}</div>
+                <div class="req-meta">By ${esc(r.book_author)} · Requested on ${date}${dueText}${noteText}</div>
+            </div>
+            <span class="status-pill pill-${r.status}">${r.status.charAt(0).toUpperCase() + r.status.slice(1)}</span>
+        </li>`;
+    }).join('');
+}
+
+// ============================================
+// CATALOGUE + BORROW BUTTON
+// ============================================
+async function loadCatalogue() {
+    const res = await api('/books');
+    if (!res) return;
+    allBooks = await res.json();
+    document.getElementById('catalogue-badge').textContent = `${allBooks.length} Books`;
+    renderCatalogue(allBooks);
+}
+
+function renderCatalogue(books) {
+    const list = document.getElementById('catalogue-list');
+    if (!books.length) {
+        list.innerHTML = '<li class="no-data">No books found.</li>';
+        return;
+    }
+    list.innerHTML = books.map((b, i) => {
+        const pendingReq = myRequests.find(r => r.book_id === b.id && r.status === 'pending');
+        const isUnavailable = b.available <= 0;
+
+        let btnHtml = '';
+        if (pendingReq) {
+            btnHtml = `<button class="borrow-btn requested" disabled>Requested</button>`;
+        } else if (isUnavailable) {
+            btnHtml = `<button class="borrow-btn" disabled>Unavailable</button>`;
+        } else {
+            btnHtml = `<button class="borrow-btn" onclick="openBorrowModal(${b.id}, '${esc(b.title)}', '${esc(b.author)}')">Request</button>`;
+        }
+
+        return `
+        <li class="book-item">
+            <div class="book-spine" style="background:${spineColors[i % spineColors.length]};"></div>
+            <div class="book-info">
+                <div class="book-title">${esc(b.title)}</div>
+                <div class="book-meta">${esc(b.author)} · ${esc(b.genre)} · ${b.copies} cop${b.copies === 1 ? 'y' : 'ies'}</div>
+            </div>
+            <span class="status-pill ${b.available > 0 ? 'pill-available' : 'pill-issued'}" style="margin-right:8px;">
+                ${b.available > 0 ? `${b.available} Avail.` : 'All Issued'}
+            </span>
+            ${btnHtml}
+        </li>`;
+    }).join('');
+}
+
+function filterCatalogue() {
+    const q = document.getElementById('catalogue-search').value.toLowerCase();
+    if (!q) { renderCatalogue(allBooks); return; }
+    renderCatalogue(allBooks.filter(b =>
+        b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q)
+    ));
+}
+
+// ============================================
+// BORROW MODAL (with selectable due date)
+// ============================================
+function openBorrowModal(bookId, title, author) {
+    selectedBookId = bookId;
+    document.getElementById('modal-btitle').textContent  = title;
+    document.getElementById('modal-bauthor').textContent = 'By ' + author;
+
+    const dateInput = document.getElementById('borrow-due-date');
+    dateInput.min   = isoPlusDays(MIN_LOAN_DAYS);
+    dateInput.max   = isoPlusDays(MAX_LOAN_DAYS);
+    dateInput.value = isoPlusDays(DEFAULT_LOAN_DAYS);
+    updateBorrowHint();
+
+    document.getElementById('modal-borrow').classList.add('open');
+}
+
+function updateBorrowHint() {
+    const dateInput = document.getElementById('borrow-due-date');
+    const hint = document.getElementById('borrow-due-hint');
+    if (!dateInput.value) {
+        hint.textContent = 'Pick any date up to 30 days from today.';
+        return;
+    }
+    const chosen = new Date(dateInput.value);
+    const days = Math.round((chosen - new Date(new Date().toDateString())) / 86400000);
+    hint.textContent = `That's a ${days}-day loan, returning on ${chosen.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.`;
+}
+
+function closeModal() {
+    document.getElementById('modal-borrow').classList.remove('open');
+    selectedBookId = null;
+}
+
+document.getElementById('modal-borrow').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-borrow')) closeModal();
+});
+
+async function confirmBorrow() {
+    if (!selectedBookId) return;
+    const dueDate = document.getElementById('borrow-due-date').value;
+    if (!dueDate) { toast('Please choose a return date.', 'error'); return; }
+
+    try {
+        const res = await api('/borrow-request', {
+            method: 'POST',
+            body: JSON.stringify({ bookId: selectedBookId, dueDate })
+        });
+        if (!res) return;
+        const result = await res.json();
+        if (result.success) {
+            closeModal();
+            toast('📬 Request submitted! The librarian will review it shortly.', 'success');
+            await Promise.all([loadMyRequests(), loadCatalogue()]);
+        } else {
+            toast(result.message || 'Failed to submit request.', 'error');
+        }
+    } catch (err) {
+        toast('Failed to submit request.', 'error');
+    }
+}
+
+// ============================================
+// RETURN MODAL (self-service return)
+// ============================================
+function openReturnModal(issueId, title, author, dueDateStr) {
+    selectedReturnId = issueId;
+    document.getElementById('return-btitle').textContent  = title;
+    document.getElementById('return-bauthor').textContent = 'By ' + (author || '—');
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    document.getElementById('return-today').textContent = today.toLocaleDateString('en-IN', {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    });
+
+    const due = new Date(dueDateStr);
+    const fineBox   = document.getElementById('return-fine-box');
+    const ontimeBox = document.getElementById('return-ontime-box');
+    fineBox.classList.remove('show');
+    ontimeBox.classList.remove('show');
+
+    if (due < today) {
+        const daysLate = Math.ceil((today - due) / 86400000);
+        document.getElementById('return-fine-amount').textContent = `₹${daysLate * 2}`;
+        fineBox.classList.add('show');
+    } else {
+        ontimeBox.classList.add('show');
+    }
+
+    document.getElementById('modal-return').classList.add('open');
+}
+
+function closeReturnModal() {
+    document.getElementById('modal-return').classList.remove('open');
+    selectedReturnId = null;
+}
+
+document.getElementById('modal-return').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-return')) closeReturnModal();
+});
+
+async function confirmReturn() {
+    if (!selectedReturnId) return;
+    try {
+        const res = await api(`/my-return/${selectedReturnId}`, { method: 'POST' });
+        if (!res) return;
+        const result = await res.json();
+        if (result.success) {
+            closeReturnModal();
+            const fineMsg = result.fine > 0 ? ` A fine of ₹${result.fine} has been recorded.` : '';
+            toast(`✅ Book returned successfully.${fineMsg}`, 'success');
+            await Promise.all([loadMyBooks(), loadCatalogue(), loadStats()]);
+        } else {
+            toast(result.message || 'Failed to return book.', 'error');
+        }
+    } catch (err) {
+        toast('Failed to return book.', 'error');
+    }
+}
+
+// ============================================
+// STATS
+// ============================================
+async function loadStats() {
+    const res = await api('/stats');
+    if (!res) return;
+    const s = await res.json();
+    document.getElementById('stat-catalogue').textContent = s.totalBooks     || 0;
+    document.getElementById('stat-avail').textContent     = s.availableBooks || 0;
+}
+
+// ============================================
+// LOGOUT
+// ============================================
+async function logout() {
+    try { await api('/logout', { method: 'POST' }); } catch (_) {}
+    window.location.href = '/index.html';
+}
+
+function toast(msg, type = 'info') {
+    const container = document.getElementById('toast-container');
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${msg}</span>`;
+    container.appendChild(el);
+    setTimeout(() => { el.style.animation = 'toastOut 0.3s ease forwards'; setTimeout(() => el.remove(), 300); }, 3400);
+}
+
+function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+}
+
+init();
+</script>
+</body>
+</html>

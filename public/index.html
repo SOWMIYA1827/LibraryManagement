@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Central Library – Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --gold: #c9a84c;
+            --dark: #1a1208;
+            --cream: #fdf6e3;
+            --brown: #5c3d1e;
+            --panel: #2a1f0f;
+            --border: rgba(201,168,76,0.25);
+            --success: #68d391;
+            --danger: #fc8181;
+            --admin-color: #e07b54;
+            --student-color: #68d391;
+            --teacher-color: #63b3ed;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background: #120d05;
+            font-family: 'Lato', sans-serif;
+            color: var(--cream);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                repeating-linear-gradient(
+                    0deg,
+                    transparent,
+                    transparent 80px,
+                    rgba(201,168,76,0.04) 80px,
+                    rgba(201,168,76,0.04) 82px
+                ),
+                radial-gradient(ellipse 80% 60% at 50% 50%, rgba(42,31,15,0.6) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .page-wrap {
+            width: 100%;
+            max-width: 460px;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .brand {
+            text-align: center;
+            margin-bottom: 28px;
+            animation: fadeDown 0.6s ease both;
+        }
+
+        .brand-icon {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 10px;
+            filter: drop-shadow(0 0 20px rgba(201,168,76,0.4));
+        }
+
+        .brand h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            color: var(--gold);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .brand p {
+            font-size: 10px;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(253,246,227,0.35);
+        }
+
+        /* ── ROLE SELECTOR ── */
+        .role-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            animation: fadeUp 0.5s 0.05s ease both;
+        }
+
+        .role-btn {
+            flex: 1;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 14px 8px 12px;
+            cursor: pointer;
+            transition: all 0.22s;
+            text-align: center;
+            font-family: 'Lato', sans-serif;
+            color: rgba(253,246,227,0.45);
+        }
+
+        .role-btn .role-icon { font-size: 22px; display: block; margin-bottom: 5px; }
+        .role-btn .role-label {
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+            display: block;
+        }
+
+        .role-btn:hover { background: rgba(255,255,255,0.07); color: rgba(253,246,227,0.7); }
+
+        .role-btn.active[data-role="admin"]   { border-color: var(--admin-color);   background: rgba(224,123,84,0.12);  color: var(--admin-color);   }
+        .role-btn.active[data-role="student"] { border-color: var(--student-color); background: rgba(104,211,145,0.1);  color: var(--student-color); }
+        .role-btn.active[data-role="teacher"] { border-color: var(--teacher-color); background: rgba(99,179,237,0.1);   color: var(--teacher-color); }
+
+        /* ── CARD ── */
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            animation: fadeUp 0.6s 0.1s ease both;
+            transition: border-color 0.3s;
+        }
+
+        .card.role-admin   { border-color: rgba(224,123,84,0.35); }
+        .card.role-student { border-color: rgba(104,211,145,0.25); }
+        .card.role-teacher { border-color: rgba(99,179,237,0.25); }
+
+        /* ── ROLE BADGE ── */
+        .role-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .role-badge.admin-badge   { background: rgba(224,123,84,0.1);  color: var(--admin-color);   border-color: rgba(224,123,84,0.2);   }
+        .role-badge.student-badge { background: rgba(104,211,145,0.08); color: var(--student-color); border-color: rgba(104,211,145,0.15); }
+        .role-badge.teacher-badge { background: rgba(99,179,237,0.08);  color: var(--teacher-color); border-color: rgba(99,179,237,0.15);  }
+
+        .role-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+            background: currentColor;
+            box-shadow: 0 0 6px currentColor;
+        }
+
+        /* ── TABS (for non-admin) ── */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 14px;
+            font-family: 'Lato', sans-serif;
+            font-size: 10px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: rgba(253,246,227,0.4);
+            cursor: pointer;
+            transition: color 0.2s, background 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+
+        .tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); background: rgba(201,168,76,0.04); }
+        .tab-btn:hover:not(.active) { color: rgba(253,246,227,0.7); background: rgba(255,255,255,0.02); }
+
+        .tab-panel { display: none; padding: 24px; }
+        .tab-panel.active { display: block; }
+
+        /* ── FORM ── */
+        .form-group { margin-bottom: 14px; }
+
+        .form-label {
+            display: block;
+            font-size: 9px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(253,246,227,0.45);
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            padding: 11px 14px;
+            font-size: 14px;
+            color: var(--cream);
+            font-family: 'Lato', sans-serif;
+            transition: border-color 0.2s, background 0.2s;
+            outline: none;
+        }
+
+        .form-input::placeholder { color: rgba(253,246,227,0.2); }
+        .form-input:focus, .form-select:focus {
+            border-color: var(--gold);
+            background: rgba(201,168,76,0.06);
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23c9a84c' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            padding-right: 36px;
+            cursor: pointer;
+        }
+
+        .form-select option { background: #1e1508; color: var(--cream); }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .btn-submit {
+            width: 100%;
+            background: var(--gold);
+            color: var(--dark);
+            border: none;
+            border-radius: 3px;
+            padding: 13px;
+            font-family: 'Lato', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+            margin-top: 4px;
+        }
+
+        .btn-submit:hover { background: #e0bc60; }
+        .btn-submit:active { transform: scale(0.99); }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-submit.admin-btn   { background: var(--admin-color);   }
+        .btn-submit.admin-btn:hover   { background: #f08b64; }
+        .btn-submit.student-btn { background: #4cae79; }
+        .btn-submit.student-btn:hover { background: #5dc489; }
+        .btn-submit.teacher-btn { background: #4a90c9; }
+        .btn-submit.teacher-btn:hover { background: #5aa0d9; }
+
+        /* ── ALERTS ── */
+        .alert {
+            border-radius: 3px;
+            padding: 11px 14px;
+            font-size: 13px;
+            margin-bottom: 14px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .alert.show { display: flex; }
+        .alert.error   { background: rgba(252,129,129,0.1); border: 1px solid rgba(252,129,129,0.3); color: var(--danger); }
+        .alert.success { background: rgba(104,211,145,0.1); border: 1px solid rgba(104,211,145,0.3); color: var(--success); }
+
+        /* ── ADMIN HINT BOX ── */
+        .admin-hint {
+            background: rgba(224,123,84,0.08);
+            border: 1px solid rgba(224,123,84,0.2);
+            border-radius: 4px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: rgba(253,246,227,0.5);
+            margin-bottom: 16px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .admin-hint .cred {
+            background: rgba(224,123,84,0.15);
+            border: 1px solid rgba(224,123,84,0.3);
+            border-radius: 3px;
+            padding: 2px 8px;
+            font-family: monospace;
+            font-size: 13px;
+            color: var(--admin-color);
+            letter-spacing: 1px;
+        }
+
+        /* ── INFO BOX ── */
+        .info-box {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 12px 14px;
+            font-size: 11px;
+            color: rgba(253,246,227,0.4);
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+
+        .info-box strong { color: rgba(253,246,227,0.65); }
+
+        .role-note {
+            font-size: 11px;
+            color: rgba(253,246,227,0.3);
+            text-align: center;
+            margin-top: 14px;
+            line-height: 1.6;
+        }
+
+        .role-note strong { color: rgba(253,246,227,0.55); }
+
+        /* ── SPINNER ── */
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid rgba(26,18,8,0.3);
+            border-top-color: var(--dark);
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes fadeDown { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes fadeUp   { from { opacity:0; transform:translateY(16px);  } to { opacity:1; transform:translateY(0); } }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 10px;
+            color: rgba(253,246,227,0.18);
+            letter-spacing: 1px;
+            animation: fadeUp 0.6s 0.3s ease both;
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-wrap">
+
+    <div class="brand">
+        <span class="brand-icon">📚</span>
+        <h1>Central Library</h1>
+        <p>Knowledge Management System</p>
+    </div>
+
+    <!-- ROLE SELECTOR -->
+    <div class="role-selector">
+        <button class="role-btn" data-role="admin" onclick="selectRole('admin')">
+            <span class="role-icon">🛡️</span>
+            <span class="role-label">Admin</span>
+        </button>
+        <button class="role-btn active" data-role="student" onclick="selectRole('student')">
+            <span class="role-icon">🎓</span>
+            <span class="role-label">Student</span>
+        </button>
+        <button class="role-btn" data-role="teacher" onclick="selectRole('teacher')">
+            <span class="role-icon">👨‍🏫</span>
+            <span class="role-label">Teacher</span>
+        </button>
+    </div>
+
+    <!-- CARD -->
+    <div class="card role-student" id="main-card">
+
+        <!-- ═══════════════════════════════ ADMIN VIEW ═══════════════════════════════ -->
+        <div id="view-admin" style="display:none;">
+            <div class="role-badge admin-badge">
+                <span class="role-dot"></span>
+                Administrator Access
+            </div>
+            <div style="padding:24px;">
+                <div class="admin-hint">
+                    🔐&nbsp; Default credentials: &nbsp;
+                    <span class="cred">admin</span>&nbsp;/&nbsp;<span class="cred">admin123</span>
+                </div>
+                <div class="alert error" id="admin-error">
+                    <span>⚠</span><span id="admin-error-msg">Invalid credentials.</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="admin-username" placeholder="admin" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="admin-password" placeholder="••••••••" autocomplete="current-password">
+                </div>
+                <button class="btn-submit admin-btn" id="admin-btn" onclick="doAdminLogin()">Access Dashboard</button>
+                <p class="role-note" style="margin-top:14px;">
+                    Admin panel manages books, members, and borrow requests.
+                </p>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════ STUDENT / TEACHER VIEW ═══════════════════ -->
+        <div id="view-user">
+            <div class="role-badge student-badge" id="user-role-badge">
+                <span class="role-dot"></span>
+                <span id="user-role-label">Student Access</span>
+            </div>
+
+            <div class="tabs">
+                <button class="tab-btn active" id="tab-login-btn" onclick="switchTab('login')">Login</button>
+                <button class="tab-btn" id="tab-signup-btn" onclick="switchTab('signup')">New Account</button>
+            </div>
+
+            <!-- LOGIN PANEL -->
+            <div class="tab-panel active" id="panel-login">
+                <div class="info-box" id="login-info-box">
+                    <strong>Students</strong> must be registered library members.<br>
+                    Don't have an account? Use the <strong>New Account</strong> tab →
+                </div>
+                <div class="alert error" id="login-error">
+                    <span>⚠</span><span id="login-error-msg">Invalid credentials.</span>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" id="login-username" placeholder="Enter your username" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-input" id="login-password" placeholder="Enter your password" autocomplete="current-password">
+                </div>
+                <button class="btn-submit student-btn" id="login-btn" onclick="doLogin()">Sign In</button>
+                <p class="role-note">Membership is auto-created on signup · Valid 1 year</p>
+            </div>
+
+            <!-- SIGNUP PANEL -->
+            <div class="tab-panel" id="panel-signup">
+                <div class="alert error" id="signup-error">
+                    <span>⚠</span><span id="signup-error-msg">Something went wrong.</span>
+                </div>
+                <div class="alert success" id="signup-success">
+                    <span>✓</span><span id="signup-success-msg">Account created! Please log in.</span>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Full Name *</label>
+                    <input type="text" class="form-input" id="su-name" placeholder="Your full name">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Username *</label>
+                        <input type="text" class="form-input" id="su-username" placeholder="Choose a username" autocomplete="username">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-input" id="su-role-display" readonly
+                               style="background:rgba(255,255,255,0.03); cursor:default; font-weight:600;">
+                        <input type="hidden" id="su-role">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="su-email" placeholder="you@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-input" id="su-phone" placeholder="+91 …">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Password *</label>
+                    <input type="password" class="form-input" id="su-password" placeholder="Min 4 characters" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm Password *</label>
+                    <input type="password" class="form-input" id="su-confirm" placeholder="Repeat password">
+                </div>
+
+                <button class="btn-submit student-btn" id="signup-btn" onclick="doSignup()">Create Account &amp; Join Library</button>
+                <p class="role-note">You'll receive a Library Member ID on registration.</p>
+            </div>
+        </div>
+
+    </div><!-- /card -->
+
+    <div class="footer">© Central Library · All rights reserved</div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────
+let currentRole = 'student';
+
+const ROLES = {
+    admin:   { badge: 'admin-badge',   label: 'Administrator Access', loginBtn: 'admin-btn',  signBtn: null,         btnClass: 'admin-btn'   },
+    student: { badge: 'student-badge', label: 'Student Access',       loginBtn: 'login-btn',  signBtn: 'signup-btn', btnClass: 'student-btn' },
+    teacher: { badge: 'teacher-badge', label: 'Teacher Access',       loginBtn: 'login-btn',  signBtn: 'signup-btn', btnClass: 'teacher-btn' },
+};
+
+// ─── SELECT ROLE ─────────────────────────────────────────
+function selectRole(role) {
+    currentRole = role;
+
+    // Update role-selector buttons
+    document.querySelectorAll('.role-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.role === role);
+    });
+
+    // Update card border class
+    const card = document.getElementById('main-card');
+    card.className = 'card role-' + role;
+
+    if (role === 'admin') {
+        document.getElementById('view-admin').style.display = 'block';
+        document.getElementById('view-user').style.display  = 'none';
+    } else {
+        document.getElementById('view-admin').style.display = 'none';
+        document.getElementById('view-user').style.display  = 'block';
+
+        // Update badge
+        const badge = document.getElementById('user-role-badge');
+        badge.className = 'role-badge ' + ROLES[role].badge;
+        document.getElementById('user-role-label').textContent = ROLES[role].label;
+
+        // Update button colours
+        const lBtn = document.getElementById('login-btn');
+        const sBtn = document.getElementById('signup-btn');
+        lBtn.className = 'btn-submit ' + ROLES[role].btnClass;
+        sBtn.className = 'btn-submit ' + ROLES[role].btnClass;
+
+        // Update signup role field
+        document.getElementById('su-role-display').value =
+            role.charAt(0).toUpperCase() + role.slice(1);
+        document.getElementById('su-role').value = role;
+
+        // Update info box text
+        const infoBox = document.getElementById('login-info-box');
+        infoBox.innerHTML = role === 'teacher'
+            ? '<strong>Teachers</strong> must be registered library members.<br>Don\'t have an account? Use the <strong>New Account</strong> tab →'
+            : '<strong>Students</strong> must be registered library members.<br>Don\'t have an account? Use the <strong>New Account</strong> tab →';
+    }
+
+    hideAlerts();
+}
+
+// ─── TABS ────────────────────────────────────────────────
+let currentTab = 'login';
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.getElementById('tab-login-btn').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-signup-btn').classList.toggle('active', tab === 'signup');
+    document.getElementById('panel-login').classList.toggle('active', tab === 'login');
+    document.getElementById('panel-signup').classList.toggle('active', tab === 'signup');
+    hideAlerts();
+}
+
+function hideAlerts() {
+    ['admin-error','login-error','signup-error','signup-success'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('show');
+    });
+}
+
+// ─── ADMIN LOGIN ─────────────────────────────────────────
+async function doAdminLogin() {
+    const username = document.getElementById('admin-username').value.trim();
+    const password = document.getElementById('admin-password').value;
+    const btn      = document.getElementById('admin-btn');
+    const errEl    = document.getElementById('admin-error');
+    const errMsg   = document.getElementById('admin-error-msg');
+
+    errEl.classList.remove('show');
+
+    if (!username || !password) {
+        errMsg.textContent = 'Please enter username and password.';
+        errEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Verifying…';
+
+    try {
+        const res  = await fetch('/api/login', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, expectedRole: 'admin' })
+        });
+        const data = await res.json();
+
+        if (data.success && data.role === 'admin') {
+            window.location.href = '/dashboard.html';
+        } else if (data.success && data.role !== 'admin') {
+            errMsg.textContent = 'This account is not an administrator. Please use Student or Teacher login.';
+            errEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Access Dashboard';
+        } else {
+            errMsg.textContent = data.message || 'Invalid admin credentials.';
+            errEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Access Dashboard';
+        }
+    } catch (err) {
+        errMsg.textContent = 'Unable to connect to server.';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Access Dashboard';
+    }
+}
+
+// ─── USER LOGIN (student / teacher) ──────────────────────
+async function doLogin() {
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value;
+    const btn      = document.getElementById('login-btn');
+    const errEl    = document.getElementById('login-error');
+    const errMsg   = document.getElementById('login-error-msg');
+
+    errEl.classList.remove('show');
+
+    if (!username || !password) {
+        errMsg.textContent = 'Please enter your username and password.';
+        errEl.classList.add('show');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Signing in…';
+
+    try {
+        const res  = await fetch('/api/login', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            if (data.role === 'admin') {
+                // Admin trying to log in from student/teacher tab
+                errMsg.textContent = 'Admin account detected. Please use the Admin login instead.';
+                errEl.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+                // Auto-switch to admin role
+                setTimeout(() => selectRole('admin'), 1200);
+            } else {
+                window.location.href = '/user-dashboard.html';
+            }
+        } else {
+            errMsg.textContent = data.message || 'Invalid username or password.';
+            errEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+    } catch (err) {
+        errMsg.textContent = 'Unable to connect to server. Please try again.';
+        errEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Sign In';
+    }
+}
+
+// ─── SIGNUP ──────────────────────────────────────────────
+async function doSignup() {
+    const name     = document.getElementById('su-name').value.trim();
+    const username = document.getElementById('su-username').value.trim();
+    const role     = document.getElementById('su-role').value || currentRole;
+    const email    = document.getElementById('su-email').value.trim();
+    const phone    = document.getElementById('su-phone').value.trim();
+    const password = document.getElementById('su-password').value;
+    const confirm  = document.getElementById('su-confirm').value;
+    const btn      = document.getElementById('signup-btn');
+    const errEl    = document.getElementById('signup-error');
+    const errMsg   = document.getElementById('signup-error-msg');
+    const sucEl    = document.getElementById('signup-success');
+    const sucMsg   = document.getElementById('signup-success-msg');
+
+    errEl.classList.remove('show');
+    sucEl.classList.remove('show');
+
+    if (!name)     { showErr(errEl, errMsg, 'Please enter your full name.');      return; }
+    if (!username) { showErr(errEl, errMsg, 'Please choose a username.');           return; }
+    if (!password) { showErr(errEl, errMsg, 'Please choose a password.');           return; }
+    if (password !== confirm) { showErr(errEl, errMsg, 'Passwords do not match.'); return; }
+    if (password.length < 4) { showErr(errEl, errMsg, 'Password must be at least 4 characters.'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Creating account…';
+
+    try {
+        const res  = await fetch('/api/signup', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password, name, role, email, phone })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            sucMsg.textContent = `✓ Account created! Your Library Member ID is ${data.memberId}. Please log in.`;
+            sucEl.classList.add('show');
+            ['su-name','su-username','su-email','su-phone','su-password','su-confirm'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
+            setTimeout(() => switchTab('login'), 2800);
+        } else {
+            showErr(errEl, errMsg, data.message || 'Signup failed. Please try again.');
+        }
+    } catch (err) {
+        showErr(errEl, errMsg, 'Unable to connect to server.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Create Account & Join Library';
+    }
+}
+
+function showErr(el, msgEl, msg) {
+    msgEl.textContent = msg;
+    el.classList.add('show');
+}
+
+// ─── KEYBOARD ENTER ──────────────────────────────────────
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter') return;
+    if (currentRole === 'admin') { doAdminLogin(); return; }
+    if (currentTab === 'login')  { doLogin();      return; }
+    if (currentTab === 'signup') { doSignup();     return; }
+});
+
+// ─── INIT ─────────────────────────────────────────────────
+// Set default role to student
+selectRole('student');
+
+// Check if already logged in
+(async () => {
+    try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+            const user = await res.json();
+            window.location.href = user.role === 'admin' ? '/dashboard.html' : '/user-dashboard.html';
+        }
+    } catch (_) {}
+})();
+</script>
+</body>
+</html>
