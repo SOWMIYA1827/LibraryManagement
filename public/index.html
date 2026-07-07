@@ -752,33 +752,6 @@ document.addEventListener('keydown', e => {
     if (currentTab === 'login')  { doLogin();      return; }
     if (currentTab === 'signup') { doSignup();     return; }
 });
-
-// ─── INIT ─────────────────────────────────────────────────
-// Set default role to student
-selectRole('student');
-
-// // Check if already logged in - FIXED VERSION
-// (async function checkAuth() {
-//     try {
-//         const res = await fetch('/api/me', { 
-//             credentials: 'include',
-//             headers: { 'Content-Type': 'application/json' }
-//         });
-        
-//         if (res.ok) {
-//             const user = await res.json();
-//             if (user.role === 'admin') {
-//                 window.location.replace('/dashboard.html');
-//             } else if (user.role === 'student' || user.role === 'teacher') {
-//                 window.location.replace('/user-dashboard.html');
-//             }
-//         }
-//         // If 401 (Unauthorized), stay on login page - this is expected
-//     } catch (err) {
-//         // Network error - stay on login page
-//         console.log('Not logged in');
-//     }
-// })();
 </script>
 </body>
 </html>
