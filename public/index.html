@@ -755,6 +755,8 @@ document.addEventListener('keydown', e => {
 
 // ─── INIT ─────────────────────────────────────────────────
 // Set default role to student
+// ─── INIT ─────────────────────────────────────────────────
+// Set default role to student
 selectRole('student');
 
 // Check if already logged in
@@ -764,6 +766,7 @@ selectRole('student');
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' }
         });
+        
         if (res.ok) {
             const user = await res.json();
             if (user.role === 'admin') {
@@ -772,8 +775,10 @@ selectRole('student');
                 window.location.href = '/user-dashboard.html';
             }
         }
+        // If 401, just stay on login page (this is expected)
     } catch (err) {
-        console.log('Not logged in');
+        // Network error or other issues - stay on login page
+        console.log('Not logged in or connection issue');
     }
 })();
 </script>
