@@ -12,7 +12,7 @@ const app = express();
 // =======================================
 // MIDDLEWARE
 // =======================================
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({ origin: "https://library-management-system-pi-hazel.vercel.app", credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(
@@ -28,20 +28,22 @@ app.use(
     })
 );
 
+const helmet = require("helmet");
+
+app.use(helmet());
+
 // =======================================
 // DATABASE CONNECTION
-// =======================================
 const db = mysql.createPool({
-    host:             process.env.DB_HOST     || "localhost",
-    port:             process.env.DB_PORT     || 3306,
-    user:             process.env.DB_USER     || "root",
-    password:         process.env.DB_PASSWORD || "Sowmiya@1827",
-    database:         process.env.DB_NAME     || "library",
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
     waitForConnections: true,
-    connectionLimit:  10,
-    queueLimit:       0
+    connectionLimit: 10,
+    queueLimit: 0
 });
-
 const promiseDb = db.promise();
 
 // Borrowing rules
