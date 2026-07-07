@@ -596,7 +596,7 @@ async function doAdminLogin() {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password, expectedRole: 'admin' })
+            body: JSON.stringify({ username, password })
         });
         const data = await res.json();
 
@@ -607,6 +607,8 @@ async function doAdminLogin() {
             errEl.classList.add('show');
             btn.disabled = false;
             btn.textContent = 'Access Dashboard';
+            // Switch to the correct role
+            setTimeout(() => selectRole(data.role || 'student'), 1200);
         } else {
             errMsg.textContent = data.message || 'Invalid admin credentials.';
             errEl.classList.add('show');
@@ -614,7 +616,8 @@ async function doAdminLogin() {
             btn.textContent = 'Access Dashboard';
         }
     } catch (err) {
-        errMsg.textContent = 'Unable to connect to server.';
+        console.error('Login error:', err);
+        errMsg.textContent = 'Unable to connect to server. Please check your connection.';
         errEl.classList.add('show');
         btn.disabled = false;
         btn.textContent = 'Access Dashboard';
@@ -668,7 +671,8 @@ async function doLogin() {
             btn.textContent = 'Sign In';
         }
     } catch (err) {
-        errMsg.textContent = 'Unable to connect to server. Please try again.';
+        console.error('Login error:', err);
+        errMsg.textContent = 'Unable to connect to server. Please check your connection.';
         errEl.classList.add('show');
         btn.disabled = false;
         btn.textContent = 'Sign In';
@@ -714,15 +718,22 @@ async function doSignup() {
         if (data.success) {
             sucMsg.textContent = `✓ Account created! Your Library Member ID is ${data.memberId}. Please log in.`;
             sucEl.classList.add('show');
+            // Clear form
             ['su-name','su-username','su-email','su-phone','su-password','su-confirm'].forEach(id => {
                 document.getElementById(id).value = '';
             });
-            setTimeout(() => switchTab('login'), 2800);
+            // Switch to login after 3 seconds
+            setTimeout(() => {
+                switchTab('login');
+                // Set username field
+                document.getElementById('login-username').value = username;
+            }, 3000);
         } else {
             showErr(errEl, errMsg, data.message || 'Signup failed. Please try again.');
         }
     } catch (err) {
-        showErr(errEl, errMsg, 'Unable to connect to server.');
+        console.error('Signup error:', err);
+        showErr(errEl, errMsg, 'Unable to connect to server. Please check your connection.');
     } finally {
         btn.disabled = false;
         btn.textContent = 'Create Account & Join Library';
@@ -749,12 +760,21 @@ selectRole('student');
 // Check if already logged in
 (async () => {
     try {
-        const res = await fetch('/api/me', { credentials: 'include' });
+        const res = await fetch('/api/me', { 
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
         if (res.ok) {
             const user = await res.json();
-            window.location.href = user.role === 'admin' ? '/dashboard.html' : '/user-dashboard.html';
+            if (user.role === 'admin') {
+                window.location.href = '/dashboard.html';
+            } else if (user.role === 'student' || user.role === 'teacher') {
+                window.location.href = '/user-dashboard.html';
+            }
         }
-    } catch (_) {}
+    } catch (err) {
+        console.log('Not logged in');
+    }
 })();
 </script>
 </body>
