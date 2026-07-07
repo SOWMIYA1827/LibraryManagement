@@ -8,6 +8,11 @@ const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 
 const app = express();
+
+// =======================================
+// TRUST PROXY - required on Render (and Vercel, Heroku, etc.)
+// Without this, secure cookies behave inconsistently behind Render's proxy
+// =======================================
 app.set('trust proxy', 1);
 
 // =======================================
@@ -19,6 +24,7 @@ const sessionStore = new MySQLStore({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    // FIX: this pool needs SSL too, or the session store's first write (login) will crash
     ssl: {
         rejectUnauthorized: false
     },
@@ -34,6 +40,11 @@ const sessionStore = new MySQLStore({
     clearExpired: true,
     expiration: 86400000 // 24 hours
 });
+
+sessionStore.on('error', (err) => {
+    console.error('❌ Session store error:', err.message);
+});
+
 app.use(session({
     secret: process.env.SESSION_SECRET || "library-management-secret-key",
     store: sessionStore,
@@ -64,7 +75,7 @@ app.use(cors({
         if (!origin) {
             return callback(null, true);
         }
-        
+
         // Check if origin is allowed
         if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
@@ -1094,21 +1105,20 @@ app.get("/user-dashboard.html", checkLogin, (req, res) => {
     res.sendFile(path.join(__dirname, "public", "user-dashboard.html"));
 });
 
-// =======================================
-// DEBUG SESSION - Remove in production
-// =======================================
-app.get("/api/debug-session", (req, res) => {
-    res.json({
-        sessionId: req.session.id,
-        userId: req.session.userId,
-        role: req.session.role,
-        cookie: req.session.cookie
-    });
-});
-
 // Handle all other routes - serve index.html for client-side routing
 app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
+// =======================================
+// GLOBAL ERROR HANDLER - always return JSON, never let Express fall
+// back to an HTML error page (this is what was crashing the frontend
+// with "Unexpected token < in JSON")
+// =======================================
+app.use((err, req, res, next) => {
+    console.error("Unhandled error:", err);
+    if (res.headersSent) return next(err);
+    res.status(500).json({ success: false, message: "Server error. Please try again." });
 });
 
 // =======================================
