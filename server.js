@@ -59,21 +59,6 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.get("/dashboard.html", checkLogin, (req, res) => {
-    if (req.session.role !== 'admin') {
-        return res.status(403).send('Access denied. Admin only.');
-    }
-    res.sendFile(path.join(__dirname, "public", "dashboard.html"));
-});
-
-// User dashboard - requires login (student/teacher)
-app.get("/user-dashboard.html", checkLogin, (req, res) => {
-    if (req.session.role === 'admin') {
-        return res.status(403).send('Access denied. Students/Teachers only.');
-    }
-    res.sendFile(path.join(__dirname, "public", "user-dashboard.html"));
-});
-
 // =======================================
 // DATABASE CONNECTION - MySQL
 // =======================================
@@ -205,7 +190,7 @@ async function bootstrap() {
             )
         `);
 
-        // Seed default admin account (plain text password)
+        // Seed default admin account
         const [[{ cnt }]] = await promiseDb.execute(
             "SELECT COUNT(*) AS cnt FROM users WHERE username = 'admin'"
         );
@@ -538,23 +523,6 @@ app.get("/api/issued", checkAdmin, async (req, res) => {
 });
 
 // =======================================
-// MY MEMBERSHIP
-// =======================================
-app.get("/api/my-membership", checkLogin, async (req, res) => {
-    if (!req.session.memberId) return res.json(null);
-    try {
-        const [rows] = await promiseDb.execute(
-            "SELECT * FROM members WHERE id = ?",
-            [req.session.memberId]
-        );
-        res.json(rows[0] || null);
-    } catch (err) {
-        console.error("Get membership error:", err);
-        res.status(500).json({ error: "Unable to fetch membership" });
-    }
-});
-
-// =======================================
 // MY ISSUED BOOKS
 // =======================================
 app.get("/api/my-issued", checkLogin, async (req, res) => {
@@ -656,7 +624,6 @@ app.post("/api/return/:id", checkAdmin, async (req, res) => {
         const record = rows[0];
         const bookId = record.book_id;
 
-        // Calculate fine
         const dueDate = new Date(record.return_date);
         dueDate.setHours(0, 0, 0, 0);
         const actualDate = new Date(returnDateInput);
@@ -1073,6 +1040,26 @@ app.get("/api/stats", checkLogin, async (req, res) => {
 // =======================================
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
+
+// =======================================
+// DASHBOARD ROUTES - Check authentication
+// =======================================
+
+// Admin dashboard - requires admin login
+app.get("/dashboard.html", checkLogin, (req, res) => {
+    if (req.session.role !== 'admin') {
+        return res.status(403).send('Access denied. Admin only.');
+    }
+    res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+// User dashboard - requires login (student/teacher)
+app.get("/user-dashboard.html", checkLogin, (req, res) => {
+    if (req.session.role === 'admin') {
+        return res.status(403).send('Access denied. Students/Teachers only.');
+    }
+    res.sendFile(path.join(__dirname, "public", "user-dashboard.html"));
+});
 
 // Handle all other routes - serve index.html for client-side routing
 app.get("*", (req, res) => {
