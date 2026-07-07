@@ -59,6 +59,21 @@ app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/dashboard.html", checkLogin, (req, res) => {
+    if (req.session.role !== 'admin') {
+        return res.status(403).send('Access denied. Admin only.');
+    }
+    res.sendFile(path.join(__dirname, "public", "dashboard.html"));
+});
+
+// User dashboard - requires login (student/teacher)
+app.get("/user-dashboard.html", checkLogin, (req, res) => {
+    if (req.session.role === 'admin') {
+        return res.status(403).send('Access denied. Students/Teachers only.');
+    }
+    res.sendFile(path.join(__dirname, "public", "user-dashboard.html"));
+});
+
 // =======================================
 // DATABASE CONNECTION - MySQL
 // =======================================
