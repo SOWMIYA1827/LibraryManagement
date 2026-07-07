@@ -507,24 +507,6 @@ const ROLES = {
     teacher: { badge: 'teacher-badge', label: 'Teacher Access',       loginBtn: 'login-btn',  signBtn: 'signup-btn', btnClass: 'teacher-btn' },
 };
 
-// ─── SAFE FETCH HELPER ───────────────────────────────────
-// Prevents "Unexpected token < in JSON" crashes: if the server ever
-// returns an HTML error page (proxy timeout, unhandled crash, etc.)
-// instead of JSON, this reports a clean message instead of throwing.
-async function safeJsonFetch(url, options) {
-    const res = await fetch(url, options);
-    const contentType = res.headers.get('content-type') || '';
-
-    if (!contentType.includes('application/json')) {
-        const text = await res.text();
-        console.error('Non-JSON response from', url, '- status', res.status, '- body:', text.slice(0, 300));
-        throw new Error(`Server returned an unexpected response (status ${res.status}). Please try again in a moment.`);
-    }
-
-    const data = await res.json();
-    return { status: res.status, data };
-}
-
 // ─── SELECT ROLE ─────────────────────────────────────────
 function selectRole(role) {
     currentRole = role;
@@ -610,29 +592,33 @@ async function doAdminLogin() {
     btn.innerHTML = '<span class="spinner"></span>Verifying…';
 
     try {
-        const { data } = await safeJsonFetch('/api/login', {
+        const res  = await fetch('/api/login', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
+        const data = await res.json();
 
         if (data.success && data.role === 'admin') {
             window.location.href = '/dashboard.html';
-            return;
         } else if (data.success && data.role !== 'admin') {
             errMsg.textContent = 'This account is not an administrator. Please use Student or Teacher login.';
             errEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Access Dashboard';
+            // Switch to the correct role
             setTimeout(() => selectRole(data.role || 'student'), 1200);
         } else {
             errMsg.textContent = data.message || 'Invalid admin credentials.';
             errEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Access Dashboard';
         }
     } catch (err) {
         console.error('Login error:', err);
-        errMsg.textContent = err.message || 'Unable to connect to server. Please check your connection.';
+        errMsg.textContent = 'Unable to connect to server. Please check your connection.';
         errEl.classList.add('show');
-    } finally {
         btn.disabled = false;
         btn.textContent = 'Access Dashboard';
     }
@@ -658,32 +644,36 @@ async function doLogin() {
     btn.innerHTML = '<span class="spinner"></span>Signing in…';
 
     try {
-        const { data } = await safeJsonFetch('/api/login', {
+        const res  = await fetch('/api/login', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password })
         });
+        const data = await res.json();
 
         if (data.success) {
             if (data.role === 'admin') {
                 // Admin trying to log in from student/teacher tab
                 errMsg.textContent = 'Admin account detected. Please use the Admin login instead.';
                 errEl.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+                // Auto-switch to admin role
                 setTimeout(() => selectRole('admin'), 1200);
             } else {
                 window.location.href = '/user-dashboard.html';
-                return;
             }
         } else {
             errMsg.textContent = data.message || 'Invalid username or password.';
             errEl.classList.add('show');
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
         }
     } catch (err) {
         console.error('Login error:', err);
-        errMsg.textContent = err.message || 'Unable to connect to server. Please check your connection.';
+        errMsg.textContent = 'Unable to connect to server. Please check your connection.';
         errEl.classList.add('show');
-    } finally {
         btn.disabled = false;
         btn.textContent = 'Sign In';
     }
@@ -717,12 +707,13 @@ async function doSignup() {
     btn.innerHTML = '<span class="spinner"></span>Creating account…';
 
     try {
-        const { data } = await safeJsonFetch('/api/signup', {
+        const res  = await fetch('/api/signup', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username, password, name, role, email, phone })
         });
+        const data = await res.json();
 
         if (data.success) {
             sucMsg.textContent = `✓ Account created! Your Library Member ID is ${data.memberId}. Please log in.`;
@@ -742,7 +733,7 @@ async function doSignup() {
         }
     } catch (err) {
         console.error('Signup error:', err);
-        showErr(errEl, errMsg, err.message || 'Unable to connect to server. Please check your connection.');
+        showErr(errEl, errMsg, 'Unable to connect to server. Please check your connection.');
     } finally {
         btn.disabled = false;
         btn.textContent = 'Create Account & Join Library';
