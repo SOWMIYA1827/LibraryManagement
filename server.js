@@ -8,6 +8,7 @@ const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 
 const app = express();
+app.set('trust proxy', 1);
 
 // =======================================
 // SESSION CONFIGURATION - MySQL Store
