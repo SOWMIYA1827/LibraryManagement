@@ -19,6 +19,9 @@ const sessionStore = new MySQLStore({
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
+    ssl: {
+        rejectUnauthorized: false
+    },
     createDatabaseTable: true,
     schema: {
         tableName: 'sessions',
@@ -31,7 +34,6 @@ const sessionStore = new MySQLStore({
     clearExpired: true,
     expiration: 86400000 // 24 hours
 });
-
 app.use(session({
     secret: process.env.SESSION_SECRET || "library-management-secret-key",
     store: sessionStore,
