@@ -1,37 +1,37 @@
 const express = require("express");
-const mysql   = require("mysql2");
-const cors    = require("cors");
 const session = require("express-session");
-const dotenv  = require("dotenv");
-const path    = require("path");
-
-dotenv.config();
+const helmet = require("helmet");
+const cors = require("cors");
 
 const app = express();
 
-// =======================================
-// MIDDLEWARE
-// =======================================
-app.use(cors({ origin: "https://library-management-system-pi-hazel.vercel.app", credentials: true }));
+// Security headers
+app.use(helmet());
+
+// CORS
+app.use(cors({
+    origin: "https://librarymanagement-yzxy.onrender.com", // or your frontend URL
+    credentials: true
+}));
+
+// Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Session
 app.use(
     session({
-        secret: process.env.SESSION_SECRET || "library_secret_key_2024",
+        secret: process.env.SESSION_SECRET,
         resave: false,
         saveUninitialized: false,
         cookie: {
-            secure: false,
+            secure: process.env.NODE_ENV === "production",
             httpOnly: true,
+            sameSite: "lax",
             maxAge: 24 * 60 * 60 * 1000
         }
     })
 );
-
-const helmet = require("helmet");
-
-app.use(helmet());
-
 // =======================================
 // DATABASE CONNECTION
 const db = mysql.createPool({
