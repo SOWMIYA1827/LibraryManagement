@@ -46,7 +46,7 @@ app.use(session({
 // CORS
 // =======================================
 const corsOptions = {
-    origin: process.env.CLIENT_URL || "https://library-management-system-pi-hazel.vercel.app",
+    origin: "https://librarymanagement-yzxy.onrender.com",
     credentials: true,
     optionsSuccessStatus: 200
 };
