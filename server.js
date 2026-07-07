@@ -4,50 +4,23 @@ const express = require("express");
 const mysql = require("mysql2");
 const path = require("path");
 const cors = require("cors");
-const helmet = require("helmet");
-const session = require("express-session");
-const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcrypt");
 
 const app = express();
 
-// Security headers
-app.use(helmet());
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100,
-    message: "Too many requests. Please try again later."
-});
-
-app.use(limiter);
 
 // CORS
 app.use(cors({
-    origin: "https://librarymanagement-yzxy.onrender.com", // or your frontend URL
+    origin: "https://library-management-system-pi-hazel.vercel.app",
     credentials: true
 }));
+
 
 // Body parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
-
-// Session
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET,
-        resave: false,
-        saveUninitialized: false,
-        cookie: {
-            secure: process.env.NODE_ENV === "production",
-            httpOnly: true,
-            sameSite: "lax",
-            maxAge: 24 * 60 * 60 * 1000
-        }
-    })
-);
-// =======================================
 // DATABASE CONNECTION
 const db = mysql.createPool({
     host: process.env.DB_HOST,
@@ -59,11 +32,13 @@ const db = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0
 });
+
 const promiseDb = db.promise();
 
+
 // Borrowing rules
-const MIN_LOAN_DAYS = 1;   // earliest a member can choose is tomorrow
-const MAX_LOAN_DAYS = 30;  // latest a member can choose is 30 days out
+const MIN_LOAN_DAYS = 1;
+const MAX_LOAN_DAYS = 30;
 const DEFAULT_LOAN_DAYS = 14;
 
 
