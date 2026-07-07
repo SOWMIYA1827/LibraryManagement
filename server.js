@@ -43,15 +43,29 @@ app.use(session({
 }));
 
 // =======================================
-// CORS
+// CORS - Allow both frontend URLs
 // =======================================
-const corsOptions = {
-    origin: "https://librarymanagement-yzxy.onrender.com",
+const allowedOrigins = [
+    'https://librarymanagement-yzxy.onrender.com',
+    'https://library-management-system-pi-hazel.vercel.app',
+    'http://localhost:10000',
+    'http://localhost:3000'
+];
+
+app.use(cors({
+    origin: function(origin, callback) {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+            callback(null, true);
+        } else {
+            console.log('Blocked by CORS:', origin);
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
     credentials: true,
     optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
+}));
 
 // =======================================
 // BODY PARSER
@@ -70,7 +84,11 @@ const db = mysql.createPool({
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0
+    queueLimit: 0,
+    // For Railway MySQL proxy
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
 const promiseDb = db.promise();
