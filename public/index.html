@@ -755,12 +755,10 @@ document.addEventListener('keydown', e => {
 
 // ─── INIT ─────────────────────────────────────────────────
 // Set default role to student
-// ─── INIT ─────────────────────────────────────────────────
-// Set default role to student
 selectRole('student');
 
-// Check if already logged in
-(async () => {
+// Check if already logged in - FIXED VERSION
+(async function checkAuth() {
     try {
         const res = await fetch('/api/me', { 
             credentials: 'include',
@@ -770,15 +768,15 @@ selectRole('student');
         if (res.ok) {
             const user = await res.json();
             if (user.role === 'admin') {
-                window.location.href = '/dashboard.html';
+                window.location.replace('/dashboard.html');
             } else if (user.role === 'student' || user.role === 'teacher') {
-                window.location.href = '/user-dashboard.html';
+                window.location.replace('/user-dashboard.html');
             }
         }
-        // If 401, just stay on login page (this is expected)
+        // If 401 (Unauthorized), stay on login page - this is expected
     } catch (err) {
-        // Network error or other issues - stay on login page
-        console.log('Not logged in or connection issue');
+        // Network error - stay on login page
+        console.log('Not logged in');
     }
 })();
 </script>
