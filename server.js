@@ -26,7 +26,9 @@ const sessionStore = new MySQLStore({
             expires: 'expires',
             data: 'data'
         }
-    }
+    },
+    clearExpired: true,
+    expiration: 86400000 // 24 hours
 });
 
 app.use(session({
@@ -39,7 +41,8 @@ app.use(session({
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24, // 24 hours
         sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax'
-    }
+    },
+    name: 'library.sid'
 }));
 
 // =======================================
@@ -55,8 +58,12 @@ const allowedOrigins = [
 app.use(cors({
     origin: function(origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV !== 'production') {
+        if (!origin) {
+            return callback(null, true);
+        }
+        
+        // Check if origin is allowed
+        if (allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
             console.log('Blocked by CORS:', origin);
@@ -85,7 +92,6 @@ const db = mysql.createPool({
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    // For Railway MySQL proxy
     ssl: {
         rejectUnauthorized: false
     }
@@ -345,7 +351,7 @@ app.post("/api/signup", async (req, res) => {
 });
 
 // =======================================
-// LOGIN
+// LOGIN - Fixed with session save
 // =======================================
 app.post("/api/login", async (req, res) => {
     const { username, password } = req.body;
@@ -373,7 +379,14 @@ app.post("/api/login", async (req, res) => {
         req.session.name = user.name;
         req.session.memberId = user.member_id || null;
 
-        res.json({ success: true, role: user.role, name: user.name });
+        // Save the session before sending response
+        req.session.save((err) => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ success: false, message: "Session error" });
+            }
+            res.json({ success: true, role: user.role, name: user.name });
+        });
     } catch (err) {
         console.error("Login error:", err);
         res.status(500).json({ success: false, message: "Login failed" });
@@ -426,7 +439,7 @@ app.post("/api/logout", checkLogin, (req, res) => {
         if (err) {
             return res.status(500).json({ success: false, message: "Logout failed" });
         }
-        res.clearCookie("connect.sid");
+        res.clearCookie("library.sid");
         res.json({ success: true, message: "Logged out successfully" });
     });
 });
@@ -1056,11 +1069,6 @@ app.get("/api/stats", checkLogin, async (req, res) => {
 // =======================================
 // STATIC FILES
 // =======================================
-// Serve static files from public directory
-// =======================================
-// STATIC FILES
-// =======================================
-// Serve static files from public directory
 app.use(express.static(path.join(__dirname, "public")));
 
 // =======================================
@@ -1081,6 +1089,18 @@ app.get("/user-dashboard.html", checkLogin, (req, res) => {
         return res.status(403).send('Access denied. Students/Teachers only.');
     }
     res.sendFile(path.join(__dirname, "public", "user-dashboard.html"));
+});
+
+// =======================================
+// DEBUG SESSION - Remove in production
+// =======================================
+app.get("/api/debug-session", (req, res) => {
+    res.json({
+        sessionId: req.session.id,
+        userId: req.session.userId,
+        role: req.session.role,
+        cookie: req.session.cookie
+    });
 });
 
 // Handle all other routes - serve index.html for client-side routing
