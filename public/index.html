@@ -596,7 +596,7 @@ async function doAdminLogin() {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, expectedRole: 'admin' })
         });
         const data = await res.json();
 
@@ -607,8 +607,6 @@ async function doAdminLogin() {
             errEl.classList.add('show');
             btn.disabled = false;
             btn.textContent = 'Access Dashboard';
-            // Switch to the correct role
-            setTimeout(() => selectRole(data.role || 'student'), 1200);
         } else {
             errMsg.textContent = data.message || 'Invalid admin credentials.';
             errEl.classList.add('show');
@@ -616,8 +614,7 @@ async function doAdminLogin() {
             btn.textContent = 'Access Dashboard';
         }
     } catch (err) {
-        console.error('Login error:', err);
-        errMsg.textContent = 'Unable to connect to server. Please check your connection.';
+        errMsg.textContent = 'Unable to connect to server.';
         errEl.classList.add('show');
         btn.disabled = false;
         btn.textContent = 'Access Dashboard';
@@ -671,8 +668,7 @@ async function doLogin() {
             btn.textContent = 'Sign In';
         }
     } catch (err) {
-        console.error('Login error:', err);
-        errMsg.textContent = 'Unable to connect to server. Please check your connection.';
+        errMsg.textContent = 'Unable to connect to server. Please try again.';
         errEl.classList.add('show');
         btn.disabled = false;
         btn.textContent = 'Sign In';
@@ -718,22 +714,15 @@ async function doSignup() {
         if (data.success) {
             sucMsg.textContent = `✓ Account created! Your Library Member ID is ${data.memberId}. Please log in.`;
             sucEl.classList.add('show');
-            // Clear form
             ['su-name','su-username','su-email','su-phone','su-password','su-confirm'].forEach(id => {
                 document.getElementById(id).value = '';
             });
-            // Switch to login after 3 seconds
-            setTimeout(() => {
-                switchTab('login');
-                // Set username field
-                document.getElementById('login-username').value = username;
-            }, 3000);
+            setTimeout(() => switchTab('login'), 2800);
         } else {
             showErr(errEl, errMsg, data.message || 'Signup failed. Please try again.');
         }
     } catch (err) {
-        console.error('Signup error:', err);
-        showErr(errEl, errMsg, 'Unable to connect to server. Please check your connection.');
+        showErr(errEl, errMsg, 'Unable to connect to server.');
     } finally {
         btn.disabled = false;
         btn.textContent = 'Create Account & Join Library';
@@ -752,6 +741,21 @@ document.addEventListener('keydown', e => {
     if (currentTab === 'login')  { doLogin();      return; }
     if (currentTab === 'signup') { doSignup();     return; }
 });
+
+// ─── INIT ─────────────────────────────────────────────────
+// Set default role to student
+selectRole('student');
+
+// Check if already logged in
+(async () => {
+    try {
+        const res = await fetch('/api/me', { credentials: 'include' });
+        if (res.ok) {
+            const user = await res.json();
+            window.location.href = user.role === 'admin' ? '/dashboard.html' : '/user-dashboard.html';
+        }
+    } catch (_) {}
+})();
 </script>
 </body>
 </html>

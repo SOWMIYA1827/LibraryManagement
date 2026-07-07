@@ -8,84 +8,20 @@ const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 
 const app = express();
-app.set('trust proxy', 1);
 
 // =======================================
-// SESSION CONFIGURATION - MySQL Store
+// CORS
 // =======================================
-const sessionStore = new MySQLStore({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    ssl: {
-        rejectUnauthorized: false
-    },
-    createDatabaseTable: true,
-    schema: {
-        tableName: 'sessions',
-        columnNames: {
-            session_id: 'session_id',
-            expires: 'expires',
-            data: 'data'
-        }
-    },
-    clearExpired: true,
-    expiration: 86400000 // 24 hours
-});
-app.use(session({
-    secret: process.env.SESSION_SECRET || "library-management-secret-key",
-    store: sessionStore,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-        secure: process.env.NODE_ENV === "production",
-        httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24, // 24 hours
-        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax'
-    },
-    name: 'library.sid'
-}));
-
-// =======================================
-// CORS - Allow both frontend URLs
-// =======================================
-const allowedOrigins = [
-    'https://librarymanagement-yzxy.onrender.com',
-    'https://library-management-system-pi-hazel.vercel.app',
-    'http://localhost:10000',
-    'http://localhost:3000'
-];
-
 app.use(cors({
-    origin: function(origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) {
-            return callback(null, true);
-        }
-        
-        // Check if origin is allowed
-        if (allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            console.log('Blocked by CORS:', origin);
-            callback(new Error('Not allowed by CORS'));
-        }
-    },
-    credentials: true,
-    optionsSuccessStatus: 200
+    origin: "https://librarymanagement-yzxy.onrender.com",
+    credentials: true
 }));
 
 // =======================================
 // BODY PARSER
 // =======================================
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// =======================================
-// DATABASE CONNECTION - MySQL
-// =======================================
+// DATABASE CONNECTION
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
@@ -94,27 +30,20 @@ const db = mysql.createPool({
     database: process.env.DB_NAME,
     waitForConnections: true,
     connectionLimit: 10,
-    queueLimit: 0,
-    ssl: {
-        rejectUnauthorized: false
-    }
+    queueLimit: 0
 });
-
 const promiseDb = db.promise();
 
-// =======================================
-// BORROWING RULES
-// =======================================
-const MIN_LOAN_DAYS = 1;
-const MAX_LOAN_DAYS = 30;
+// Borrowing rules
+const MIN_LOAN_DAYS = 1;   // earliest a member can choose is tomorrow
+const MAX_LOAN_DAYS = 30;  // latest a member can choose is 30 days out
 const DEFAULT_LOAN_DAYS = 14;
 
-// =======================================
-// BOOTSTRAP — CREATE TABLES & SEED ADMIN
+
+// BOOTSTRAP — create tables & seed admin
 // =======================================
 async function bootstrap() {
     try {
-        // Create members table
         await promiseDb.execute(`
             CREATE TABLE IF NOT EXISTS members (
                 id                VARCHAR(20)  PRIMARY KEY,
@@ -127,7 +56,6 @@ async function bootstrap() {
             )
         `);
 
-        // Create users table
         await promiseDb.execute(`
             CREATE TABLE IF NOT EXISTS users (
                 id         INT          AUTO_INCREMENT PRIMARY KEY,
@@ -141,7 +69,6 @@ async function bootstrap() {
             )
         `);
 
-        // Create books table
         await promiseDb.execute(`
             CREATE TABLE IF NOT EXISTS books (
                 id         INT          AUTO_INCREMENT PRIMARY KEY,
@@ -154,7 +81,6 @@ async function bootstrap() {
             )
         `);
 
-        // Create issued_books table
         await promiseDb.execute(`
             CREATE TABLE IF NOT EXISTS issued_books (
                 id          INT         AUTO_INCREMENT PRIMARY KEY,
@@ -169,7 +95,6 @@ async function bootstrap() {
             )
         `);
 
-        // Create borrow_requests table
         await promiseDb.execute(`
             CREATE TABLE IF NOT EXISTS borrow_requests (
                 id                 INT         AUTO_INCREMENT PRIMARY KEY,
@@ -187,19 +112,20 @@ async function bootstrap() {
             )
         `);
 
-        // Add preferred_due_date if missing
+        // Safety net: add preferred_due_date to pre-existing borrow_requests tables
+        // created before this column existed.
         try {
             await promiseDb.execute(
                 `ALTER TABLE borrow_requests ADD COLUMN preferred_due_date DATE NULL AFTER status`
             );
-            console.log("✅ Added preferred_due_date column to borrow_requests.");
+            console.log("✅  Added preferred_due_date column to borrow_requests.");
         } catch (alterErr) {
             if (alterErr.code !== "ER_DUP_FIELDNAME") {
                 console.error("Column check error:", alterErr.message);
             }
         }
 
-        // Create history table
+        // Activity history — feeds the "Activity History" panel on the admin dashboard
         await promiseDb.execute(`
             CREATE TABLE IF NOT EXISTS history (
                 id          INT AUTO_INCREMENT PRIMARY KEY,
@@ -217,7 +143,7 @@ async function bootstrap() {
             )
         `);
 
-        // Seed default admin account
+        // Seed default admin account (plain-text password for demo)
         const [[{ cnt }]] = await promiseDb.execute(
             "SELECT COUNT(*) AS cnt FROM users WHERE username = 'admin'"
         );
@@ -225,24 +151,22 @@ async function bootstrap() {
             await promiseDb.execute(
                 "INSERT INTO users (username, password, name, role, member_id) VALUES ('admin', 'admin123', 'Administrator', 'admin', NULL)"
             );
-            console.log("✅ Admin seeded: admin / admin123");
+            console.log("✅  Admin seeded: admin / admin123");
         }
 
-        console.log("✅ Database tables ready.");
+        console.log("✅  Database tables ready.");
     } catch (err) {
-        console.error("❌ Bootstrap error:", err.message);
+        console.error("❌  Bootstrap error:", err.message);
         process.exit(1);
     }
 }
 
-// Test database connection
 db.getConnection((err, connection) => {
     if (err) {
-        console.error("❌ Database connection failed:", err.message);
-        console.error("Please check your database credentials in .env file");
+        console.error("❌  Database connection failed:", err.message);
         process.exit(1);
     }
-    console.log("✅ MySQL connected");
+    console.log("✅  MySQL connected");
     connection.release();
     bootstrap();
 });
@@ -251,19 +175,16 @@ db.getConnection((err, connection) => {
 // AUTH MIDDLEWARE
 // =======================================
 function checkLogin(req, res, next) {
-    if (!req.session.userId) {
+    if (!req.session.userId)
         return res.status(401).json({ success: false, message: "Login required" });
-    }
     next();
 }
 
 function checkAdmin(req, res, next) {
-    if (!req.session.userId) {
+    if (!req.session.userId)
         return res.status(401).json({ success: false, message: "Login required" });
-    }
-    if (req.session.role !== "admin") {
+    if (req.session.role !== "admin")
         return res.status(403).json({ success: false, message: "Admin access required" });
-    }
     next();
 }
 
@@ -277,10 +198,10 @@ async function logHistory({
     memberId,
     memberName,
     memberRole = null,
-    dueDate = null,
+    dueDate    = null,
     returnDate = null,
     fineAmount = null,
-    note = null
+    note       = null
 }) {
     try {
         await promiseDb.execute(
@@ -290,13 +211,12 @@ async function logHistory({
             [actionType, bookId, bookTitle, memberId, memberName, memberRole, dueDate, returnDate, fineAmount, note]
         );
     } catch (err) {
+        // History logging must never break the primary action
         console.error("History log error:", err.message);
     }
 }
 
-// =======================================
-// DATE HELPER
-// =======================================
+// Small date helper: "YYYY-MM-DD" string, n days from today
 function isoDatePlusDays(n) {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -305,28 +225,27 @@ function isoDatePlusDays(n) {
 }
 
 // =======================================
-// SIGNUP (student / teacher only)
+// SIGNUP  (student / teacher only)
 // =======================================
 app.post("/api/signup", async (req, res) => {
     const { username, password, name, role, email, phone } = req.body;
 
-    if (!username || !password || !name) {
+    if (!username || !password || !name)
         return res.status(400).json({ success: false, message: "Name, username and password are required" });
-    }
-    if (password.length < 4) {
+    if (password.length < 4)
         return res.status(400).json({ success: false, message: "Password must be at least 4 characters" });
-    }
 
+    // Only student / teacher roles allowed via self-signup
     const allowedRoles = ["student", "teacher"];
-    const finalRole = allowedRoles.includes(role) ? role : "student";
-    const memberType = finalRole === "teacher" ? "Faculty" : "Student";
+    const finalRole    = allowedRoles.includes(role) ? role : "student";
+    const memberType   = finalRole === "teacher" ? "Faculty" : "Student";
 
     const conn = await promiseDb.getConnection();
     try {
         await conn.beginTransaction();
 
-        const memberId = "LIB" + Date.now().toString().slice(-6);
-        const expiry = new Date();
+        const memberId  = "LIB" + Date.now().toString().slice(-6);
+        const expiry    = new Date();
         expiry.setFullYear(expiry.getFullYear() + 1);
         const expiryStr = expiry.toISOString().split("T")[0];
 
@@ -343,9 +262,8 @@ app.post("/api/signup", async (req, res) => {
         res.json({ success: true, memberId, role: finalRole });
     } catch (err) {
         await conn.rollback();
-        if (err.code === "ER_DUP_ENTRY") {
+        if (err.code === "ER_DUP_ENTRY")
             return res.status(409).json({ success: false, message: "Username already exists. Please choose another." });
-        }
         console.error("Signup error:", err);
         res.status(500).json({ success: false, message: "Signup failed. Please try again." });
     } finally {
@@ -354,14 +272,15 @@ app.post("/api/signup", async (req, res) => {
 });
 
 // =======================================
-// LOGIN - Fixed with session save
+// LOGIN  — returns role so frontend can
+//          redirect correctly and guard
+//          against wrong-tab logins
 // =======================================
-app.post("/api/login", async (req, res) => {
+("/api/login", async (req, res) => {
     const { username, password } = req.body;
 
-    if (!username || !password) {
+    if (!username || !password)
         return res.status(400).json({ success: false, message: "Username and password are required" });
-    }
 
     try {
         const [result] = await promiseDb.execute(
@@ -369,27 +288,19 @@ app.post("/api/login", async (req, res) => {
             [username, password]
         );
 
-        if (result.length === 0) {
+        if (result.length === 0)
             return res.status(401).json({ success: false, message: "Invalid username or password" });
-        }
 
         const user = result[0];
 
         // Save session
-        req.session.userId = user.id;
-        req.session.role = user.role;
+        req.session.userId   = user.id;
+        req.session.role     = user.role;
         req.session.username = user.username;
-        req.session.name = user.name;
+        req.session.name     = user.name;
         req.session.memberId = user.member_id || null;
 
-        // Save the session before sending response
-        req.session.save((err) => {
-            if (err) {
-                console.error('Session save error:', err);
-                return res.status(500).json({ success: false, message: "Session error" });
-            }
-            res.json({ success: true, role: user.role, name: user.name });
-        });
+        res.json({ success: true, role: user.role, name: user.name });
     } catch (err) {
         console.error("Login error:", err);
         res.status(500).json({ success: false, message: "Login failed" });
@@ -405,9 +316,8 @@ app.get("/api/me", checkLogin, async (req, res) => {
             "SELECT id, username, name, role, member_id FROM users WHERE id = ?",
             [req.session.userId]
         );
-        if (rows.length === 0) {
+        if (rows.length === 0)
             return res.status(404).json({ success: false, message: "User not found" });
-        }
 
         const user = rows[0];
         let membership = null;
@@ -421,15 +331,14 @@ app.get("/api/me", checkLogin, async (req, res) => {
         }
 
         res.json({
-            id: user.id,
-            username: user.username,
-            name: user.name,
-            role: user.role,
-            memberId: user.member_id,
+            id:        user.id,
+            username:  user.username,
+            name:      user.name,
+            role:      user.role,
+            memberId:  user.member_id,
             membership
         });
     } catch (err) {
-        console.error("Get user error:", err);
         res.status(500).json({ success: false, message: "Could not fetch user" });
     }
 });
@@ -439,10 +348,8 @@ app.get("/api/me", checkLogin, async (req, res) => {
 // =======================================
 app.post("/api/logout", checkLogin, (req, res) => {
     req.session.destroy(err => {
-        if (err) {
-            return res.status(500).json({ success: false, message: "Logout failed" });
-        }
-        res.clearCookie("library.sid");
+        if (err) return res.status(500).json({ success: false, message: "Logout failed" });
+        res.clearCookie("connect.sid");
         res.json({ success: true, message: "Logged out successfully" });
     });
 });
@@ -455,16 +362,14 @@ app.get("/api/books", checkLogin, async (req, res) => {
         const [books] = await promiseDb.execute("SELECT * FROM books ORDER BY title");
         res.json(books);
     } catch (err) {
-        console.error("Get books error:", err);
         res.status(500).json({ error: "Unable to fetch books" });
     }
 });
 
 app.post("/api/books", checkAdmin, async (req, res) => {
     const { title, author, genre, copies } = req.body;
-    if (!title || !author) {
+    if (!title || !author)
         return res.status(400).json({ success: false, message: "Title and author are required" });
-    }
 
     const copiesNum = Math.max(1, parseInt(copies) || 1);
     try {
@@ -474,21 +379,17 @@ app.post("/api/books", checkAdmin, async (req, res) => {
         );
         res.json({ success: true, bookId: result.insertId });
     } catch (err) {
-        console.error("Add book error:", err);
         res.status(500).json({ success: false, message: "Unable to add book" });
     }
 });
 
+// Delete book — admin only
 app.delete("/api/books/:id", checkAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
     try {
-        const [result] = await promiseDb.execute("DELETE FROM books WHERE id = ?", [id]);
-        if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: "Book not found" });
-        }
+        await promiseDb.execute("DELETE FROM books WHERE id = ?", [id]);
         res.json({ success: true });
     } catch (err) {
-        console.error("Delete book error:", err);
         res.status(500).json({ success: false, message: "Unable to delete book" });
     }
 });
@@ -501,16 +402,13 @@ app.get("/api/members", checkAdmin, async (req, res) => {
         const [members] = await promiseDb.execute("SELECT * FROM members ORDER BY name");
         res.json(members);
     } catch (err) {
-        console.error("Get members error:", err);
         res.status(500).json({ error: "Unable to fetch members" });
     }
 });
 
 app.post("/api/members", checkAdmin, async (req, res) => {
     const { name, email, phone, type, expiry } = req.body;
-    if (!name) {
-        return res.status(400).json({ success: false, message: "Member name is required" });
-    }
+    if (!name) return res.status(400).json({ success: false, message: "Member name is required" });
 
     const memberId = "LIB" + Date.now().toString().slice(-6);
     try {
@@ -520,13 +418,12 @@ app.post("/api/members", checkAdmin, async (req, res) => {
         );
         res.json({ success: true, memberId });
     } catch (err) {
-        console.error("Add member error:", err);
         res.status(500).json({ success: false, message: "Unable to add member" });
     }
 });
 
 // =======================================
-// ISSUED BOOKS
+// ISSUED BOOKS — admin: all / user: mine
 // =======================================
 app.get("/api/issued", checkAdmin, async (req, res) => {
     try {
@@ -551,13 +448,28 @@ app.get("/api/issued", checkAdmin, async (req, res) => {
         `);
         res.json(rows);
     } catch (err) {
-        console.error("Get issued books error:", err);
         res.status(500).json({ error: "Unable to fetch issued books" });
     }
 });
 
 // =======================================
-// MY ISSUED BOOKS
+// MY MEMBERSHIP
+// =======================================
+app.get("/api/my-membership", checkLogin, async (req, res) => {
+    if (!req.session.memberId) return res.json(null);
+    try {
+        const [rows] = await promiseDb.execute(
+            "SELECT * FROM members WHERE id = ?",
+            [req.session.memberId]
+        );
+        res.json(rows[0] || null);
+    } catch (err) {
+        res.status(500).json({ error: "Unable to fetch membership" });
+    }
+});
+
+// =======================================
+// MY ISSUED BOOKS (student / teacher)
 // =======================================
 app.get("/api/my-issued", checkLogin, async (req, res) => {
     if (!req.session.memberId) return res.json([]);
@@ -578,43 +490,30 @@ app.get("/api/my-issued", checkLogin, async (req, res) => {
         `, [req.session.memberId]);
         res.json(rows);
     } catch (err) {
-        console.error("Get my issued error:", err);
         res.status(500).json({ error: "Unable to fetch your issued books" });
     }
 });
 
 // =======================================
-// ISSUE BOOK (Admin only)
+// ISSUE BOOK — admin only (direct issue)
 // =======================================
 app.post("/api/issue", checkAdmin, async (req, res) => {
     const { bookId, memberId, issueDate, dueDate } = req.body;
-    if (!bookId || !memberId) {
+    if (!bookId || !memberId)
         return res.status(400).json({ success: false, message: "Book and member are required" });
-    }
 
     try {
         const [[book]] = await promiseDb.execute("SELECT title, available FROM books WHERE id = ?", [bookId]);
-        if (!book) {
-            return res.status(404).json({ success: false, message: "Book not found" });
-        }
-        if (book.available <= 0) {
+        if (!book || book.available <= 0)
             return res.status(400).json({ success: false, message: "Book is not available" });
-        }
 
         const [[member]] = await promiseDb.execute("SELECT name FROM members WHERE id = ?", [memberId]);
-        if (!member) {
-            return res.status(404).json({ success: false, message: "Member not found" });
-        }
-
         const [userRows] = await promiseDb.execute("SELECT role FROM users WHERE member_id = ? LIMIT 1", [memberId]);
         const userRow = userRows[0] || null;
 
-        const today = new Date().toISOString().split("T")[0];
-        const due = dueDate || isoDatePlusDays(DEFAULT_LOAN_DAYS);
-
         await promiseDb.execute(
             "INSERT INTO issued_books (book_id, member_id, issue_date, return_date, status) VALUES (?, ?, ?, ?, 'issued')",
-            [bookId, memberId, issueDate || today, due]
+            [bookId, memberId, issueDate, dueDate]
         );
         await promiseDb.execute("UPDATE books SET available = available - 1 WHERE id = ?", [bookId]);
 
@@ -623,9 +522,9 @@ app.post("/api/issue", checkAdmin, async (req, res) => {
             bookId,
             bookTitle: book.title,
             memberId,
-            memberName: member.name,
+            memberName: member ? member.name : memberId,
             memberRole: userRow ? userRow.role : null,
-            dueDate: due
+            dueDate: dueDate
         });
 
         res.json({ success: true, message: "Book issued successfully" });
@@ -636,7 +535,7 @@ app.post("/api/issue", checkAdmin, async (req, res) => {
 });
 
 // =======================================
-// RETURN BOOK (Admin only)
+// RETURN BOOK — admin only
 // =======================================
 app.post("/api/return/:id", checkAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
@@ -651,18 +550,16 @@ app.post("/api/return/:id", checkAdmin, async (req, res) => {
             WHERE ib.id = ? AND ib.status = 'issued'
         `, [id]);
 
-        if (rows.length === 0) {
+        if (rows.length === 0)
             return res.status(404).json({ success: false, message: "Record not found" });
-        }
 
         const record = rows[0];
         const bookId = record.book_id;
 
-        const dueDate = new Date(record.return_date);
-        dueDate.setHours(0, 0, 0, 0);
+        // Fine: ₹2/day overdue, based on the due date stored on the issued_books record
+        const dueDate    = new Date(record.return_date);
         const actualDate = new Date(returnDateInput);
-        actualDate.setHours(0, 0, 0, 0);
-        const daysLate = Math.max(0, Math.floor((actualDate - dueDate) / 86400000));
+        const daysLate   = Math.max(0, Math.ceil((actualDate - dueDate) / 86400000));
         const fineAmount = daysLate * 2;
 
         const [userRows] = await promiseDb.execute(
@@ -694,18 +591,21 @@ app.post("/api/return/:id", checkAdmin, async (req, res) => {
 });
 
 // =======================================
-// SELF-SERVICE RETURN
+// SELF-SERVICE RETURN — student / teacher
+// Lets a member return their own borrowed
+// book straight from their dashboard. The
+// record disappears from "My Borrowed
+// Books" and shows up immediately in the
+// admin's Activity History / stats.
 // =======================================
 app.post("/api/my-return/:id", checkLogin, async (req, res) => {
-    if (req.session.role === "admin") {
+    if (req.session.role === "admin")
         return res.status(403).json({ success: false, message: "Admins return books from the librarian desk." });
-    }
 
-    const id = parseInt(req.params.id);
+    const id       = parseInt(req.params.id);
     const memberId = req.session.memberId;
-    if (!memberId) {
+    if (!memberId)
         return res.status(400).json({ success: false, message: "No membership found for your account" });
-    }
 
     try {
         const [rows] = await promiseDb.execute(`
@@ -715,19 +615,16 @@ app.post("/api/my-return/:id", checkLogin, async (req, res) => {
             WHERE ib.id = ? AND ib.member_id = ? AND ib.status = 'issued'
         `, [id, memberId]);
 
-        if (rows.length === 0) {
+        if (rows.length === 0)
             return res.status(404).json({ success: false, message: "This book isn't in your borrowed list" });
-        }
 
         const record = rows[0];
         const bookId = record.book_id;
         const returnDateInput = new Date().toISOString().split("T")[0];
 
-        const dueDate = new Date(record.return_date);
-        dueDate.setHours(0, 0, 0, 0);
+        const dueDate    = new Date(record.return_date);
         const actualDate = new Date(returnDateInput);
-        actualDate.setHours(0, 0, 0, 0);
-        const daysLate = Math.max(0, Math.floor((actualDate - dueDate) / 86400000));
+        const daysLate   = Math.max(0, Math.ceil((actualDate - dueDate) / 86400000));
         const fineAmount = daysLate * 2;
 
         await promiseDb.execute("UPDATE issued_books SET status = 'returned' WHERE id = ?", [id]);
@@ -754,28 +651,29 @@ app.post("/api/my-return/:id", checkLogin, async (req, res) => {
 });
 
 // =======================================
-// BORROW REQUEST
+// BORROW REQUEST — student / teacher
+// Member picks their own preferred due
+// date (within MIN_LOAN_DAYS..MAX_LOAN_DAYS).
+// The librarian still approves the request;
+// on approval the preferred date is used
+// as the due date unless the admin overrides it.
 // =======================================
 app.post("/api/borrow-request", checkLogin, async (req, res) => {
-    if (req.session.role === "admin") {
+    if (req.session.role === "admin")
         return res.status(403).json({ success: false, message: "Admins issue books directly." });
-    }
 
     const { bookId, dueDate } = req.body;
     const memberId = req.session.memberId;
-    const userId = req.session.userId;
+    const userId   = req.session.userId;
 
-    if (!bookId) {
-        return res.status(400).json({ success: false, message: "Book ID is required" });
-    }
-    if (!memberId) {
-        return res.status(400).json({ success: false, message: "No membership found for your account" });
-    }
+    if (!bookId)    return res.status(400).json({ success: false, message: "Book ID is required" });
+    if (!memberId)  return res.status(400).json({ success: false, message: "No membership found for your account" });
 
+    // Validate the member's preferred return date, if supplied
     let preferredDueDate = null;
     if (dueDate) {
         const earliest = isoDatePlusDays(MIN_LOAN_DAYS);
-        const latest = isoDatePlusDays(MAX_LOAN_DAYS);
+        const latest   = isoDatePlusDays(MAX_LOAN_DAYS);
         if (dueDate < earliest || dueDate > latest) {
             return res.status(400).json({
                 success: false,
@@ -789,20 +687,15 @@ app.post("/api/borrow-request", checkLogin, async (req, res) => {
 
     try {
         const [[book]] = await promiseDb.execute("SELECT * FROM books WHERE id = ?", [bookId]);
-        if (!book) {
-            return res.status(404).json({ success: false, message: "Book not found" });
-        }
-        if (book.available <= 0) {
-            return res.status(400).json({ success: false, message: "This book is currently not available" });
-        }
+        if (!book)               return res.status(404).json({ success: false, message: "Book not found" });
+        if (book.available <= 0) return res.status(400).json({ success: false, message: "This book is currently not available" });
 
         const [existing] = await promiseDb.execute(
             "SELECT id FROM borrow_requests WHERE book_id = ? AND member_id = ? AND status = 'pending'",
             [bookId, memberId]
         );
-        if (existing.length > 0) {
+        if (existing.length > 0)
             return res.status(409).json({ success: false, message: "You already have a pending request for this book" });
-        }
 
         await promiseDb.execute(
             "INSERT INTO borrow_requests (book_id, member_id, user_id, status, preferred_due_date) VALUES (?, ?, ?, 'pending', ?)",
@@ -828,7 +721,7 @@ app.post("/api/borrow-request", checkLogin, async (req, res) => {
 });
 
 // =======================================
-// MY BORROW REQUESTS
+// MY BORROW REQUESTS — student / teacher
 // =======================================
 app.get("/api/my-borrow-requests", checkLogin, async (req, res) => {
     if (!req.session.memberId) return res.json([]);
@@ -852,13 +745,12 @@ app.get("/api/my-borrow-requests", checkLogin, async (req, res) => {
         `, [req.session.memberId]);
         res.json(rows);
     } catch (err) {
-        console.error("Get my borrow requests error:", err);
         res.status(500).json({ error: "Unable to fetch borrow requests" });
     }
 });
 
 // =======================================
-// ALL BORROW REQUESTS (Admin)
+// ALL BORROW REQUESTS — admin
 // =======================================
 app.get("/api/borrow-requests", checkAdmin, async (req, res) => {
     try {
@@ -889,13 +781,15 @@ app.get("/api/borrow-requests", checkAdmin, async (req, res) => {
         `);
         res.json(rows);
     } catch (err) {
-        console.error("Get all borrow requests error:", err);
         res.status(500).json({ error: "Unable to fetch borrow requests" });
     }
 });
 
 // =======================================
-// APPROVE BORROW REQUEST
+// APPROVE BORROW REQUEST — admin
+// Defaults the issued book's due date to
+// whatever the member originally requested;
+// the admin can still override via dueDate.
 // =======================================
 app.post("/api/borrow-requests/:id/approve", checkAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
@@ -923,7 +817,7 @@ app.post("/api/borrow-requests/:id/approve", checkAdmin, async (req, res) => {
         const [[userRow]] = await conn.execute("SELECT role FROM users WHERE id = ?", [request.user_id]);
 
         const today = new Date().toISOString().split("T")[0];
-        const due = dueDate || request.preferred_due_date || isoDatePlusDays(DEFAULT_LOAN_DAYS);
+        const due   = dueDate || request.preferred_due_date || isoDatePlusDays(DEFAULT_LOAN_DAYS);
 
         await conn.execute(
             "INSERT INTO issued_books (book_id, member_id, issue_date, return_date, status) VALUES (?, ?, ?, ?, 'issued')",
@@ -957,7 +851,7 @@ app.post("/api/borrow-requests/:id/approve", checkAdmin, async (req, res) => {
 });
 
 // =======================================
-// REJECT BORROW REQUEST
+// REJECT BORROW REQUEST — admin
 // =======================================
 app.post("/api/borrow-requests/:id/reject", checkAdmin, async (req, res) => {
     const id = parseInt(req.params.id);
@@ -966,13 +860,12 @@ app.post("/api/borrow-requests/:id/reject", checkAdmin, async (req, res) => {
         const [rows] = await promiseDb.execute(
             "SELECT * FROM borrow_requests WHERE id = ? AND status = 'pending'", [id]
         );
-        if (rows.length === 0) {
+        if (rows.length === 0)
             return res.status(404).json({ success: false, message: "Request not found or already resolved" });
-        }
 
         const request = rows[0];
 
-        const [[book]] = await promiseDb.execute("SELECT title FROM books WHERE id = ?", [request.book_id]);
+        const [[book]]   = await promiseDb.execute("SELECT title FROM books WHERE id = ?", [request.book_id]);
         const [[member]] = await promiseDb.execute("SELECT name FROM members WHERE id = ?", [request.member_id]);
         const [[userRow]] = await promiseDb.execute("SELECT role FROM users WHERE id = ?", [request.user_id]);
 
@@ -999,7 +892,7 @@ app.post("/api/borrow-requests/:id/reject", checkAdmin, async (req, res) => {
 });
 
 // =======================================
-// ACTIVITY HISTORY (Admin)
+// ACTIVITY HISTORY — admin
 // =======================================
 app.get("/api/history", checkAdmin, async (req, res) => {
     try {
@@ -1029,7 +922,7 @@ app.get("/api/history", checkAdmin, async (req, res) => {
 });
 
 // =======================================
-// SEARCH
+// SEARCH (login required)
 // =======================================
 app.get("/api/search", checkLogin, async (req, res) => {
     try {
@@ -1039,7 +932,6 @@ app.get("/api/search", checkLogin, async (req, res) => {
         );
         res.json(books);
     } catch (err) {
-        console.error("Search error:", err);
         res.status(500).json({ error: "Search failed" });
     }
 });
@@ -1049,22 +941,21 @@ app.get("/api/search", checkLogin, async (req, res) => {
 // =======================================
 app.get("/api/stats", checkLogin, async (req, res) => {
     try {
-        const [[books]] = await promiseDb.execute(
+        const [[books]]   = await promiseDb.execute(
             "SELECT COUNT(*) AS totalBooks, COALESCE(SUM(available),0) AS availableBooks FROM books"
         );
         const [[members]] = await promiseDb.execute("SELECT COUNT(*) AS totalMembers FROM members");
-        const [[issued]] = await promiseDb.execute("SELECT COUNT(*) AS issuedBooks FROM issued_books WHERE status = 'issued'");
+        const [[issued]]  = await promiseDb.execute("SELECT COUNT(*) AS issuedBooks FROM issued_books WHERE status = 'issued'");
         const [[pending]] = await promiseDb.execute("SELECT COUNT(*) AS pendingRequests FROM borrow_requests WHERE status = 'pending'");
 
         res.json({
-            totalBooks: books.totalBooks || 0,
-            availableBooks: books.availableBooks || 0,
-            totalMembers: members.totalMembers || 0,
-            issuedBooks: issued.issuedBooks || 0,
+            totalBooks:      books.totalBooks      || 0,
+            availableBooks:  books.availableBooks  || 0,
+            totalMembers:    members.totalMembers  || 0,
+            issuedBooks:     issued.issuedBooks    || 0,
             pendingRequests: pending.pendingRequests || 0
         });
     } catch (err) {
-        console.error("Stats error:", err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -1073,60 +964,15 @@ app.get("/api/stats", checkLogin, async (req, res) => {
 // STATIC FILES
 // =======================================
 app.use(express.static(path.join(__dirname, "public")));
-
-// =======================================
-// DASHBOARD ROUTES - Check authentication
-// =======================================
-
-// Admin dashboard - requires admin login
-app.get("/dashboard.html", checkLogin, (req, res) => {
-    if (req.session.role !== 'admin') {
-        return res.status(403).send('Access denied. Admin only.');
-    }
-    res.sendFile(path.join(__dirname, "public", "dashboard.html"));
-});
-
-// User dashboard - requires login (student/teacher)
-app.get("/user-dashboard.html", checkLogin, (req, res) => {
-    if (req.session.role === 'admin') {
-        return res.status(403).send('Access denied. Students/Teachers only.');
-    }
-    res.sendFile(path.join(__dirname, "public", "user-dashboard.html"));
-});
-
-// =======================================
-// DEBUG SESSION - Remove in production
-// =======================================
-app.get("/api/debug-session", (req, res) => {
-    res.json({
-        sessionId: req.session.id,
-        userId: req.session.userId,
-        role: req.session.role,
-        cookie: req.session.cookie
-    });
-});
-
-// Handle all other routes - serve index.html for client-side routing
 app.get("*", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 // =======================================
-// START SERVER
+// START
 // =======================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`\n🚀 Server running on port ${PORT}`);
-    console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`   Admin: admin / admin123\n`);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (err) => {
-    console.error('Unhandled Rejection:', err);
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught Exception:', err);
+    console.log(`\n🚀  Server → http://localhost:${PORT}`);
+    console.log(`    Admin: admin / admin123\n`);
 });
